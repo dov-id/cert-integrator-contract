@@ -7,29 +7,7 @@ describe("CertIntegrator", () => {
 
   before(async () => {
     const certIntegratorContract = await ethers.getContractFactory("CertIntegrator");
-    certIntegrator = await certIntegratorContract.deploy(3);
-  });
-
-  describe("#constructor", () => {
-    it("should set parameters correctly", async () => {
-      expect(await certIntegrator.getRootsAmount()).to.eq(3);
-    });
-  });
-
-  describe("#getLastBLock", async () => {
-    it("should revert for empty queue", async () => {
-      await expect(
-        certIntegrator.getLastBlock("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.be.revertedWith("getLastBlock: empty queue");
-    });
-  });
-
-  describe("#getLastRoot", () => {
-    it("should revert for empty queue", async () => {
-      await expect(
-        certIntegrator.getLastRoot("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.be.revertedWith("getLastRoot: empty queue");
-    });
+    certIntegrator = await certIntegratorContract.deploy();
   });
 
   describe("#updateCourseState", () => {
@@ -58,7 +36,16 @@ describe("CertIntegrator", () => {
       ).to.be.revertedWith("Ownable: caller is not the owner");
     });
 
-    it("should update course", async () => {
+    it("should be empty result", async () => {
+      expect(
+        await certIntegrator.contractData(
+          "0x736f6d65636f757273656e616d65000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000001"
+        )
+      ).to.equal(0);
+    });
+
+    it("should add statement to the course", async () => {
       await certIntegrator.updateCourseState(
         ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
         ["0x0000000000000000000000000000000000000000000000000000000000000001"]
@@ -66,44 +53,59 @@ describe("CertIntegrator", () => {
       const blockNumber = await ethers.provider.getBlockNumber();
 
       expect(
-        await certIntegrator.getLastRoot("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.equal("0x0000000000000000000000000000000000000000000000000000000000000001");
-
-      expect(
-        await certIntegrator.getLastBlock("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
+        await certIntegrator.contractData(
+          "0x736f6d65636f757273656e616d65000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000001"
+        )
       ).to.equal(blockNumber);
     });
 
-    it("should update course with shift queue", async () => {
+    it("should add statements to the course", async () => {
       await certIntegrator.updateCourseState(
         ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
         ["0x0000000000000000000000000000000000000000000000000000000000000001"]
       );
+      const blockNumber1 = await ethers.provider.getBlockNumber();
 
       await certIntegrator.updateCourseState(
         ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
         ["0x0000000000000000000000000000000000000000000000000000000000000002"]
       );
+      const blockNumber2 = await ethers.provider.getBlockNumber();
 
       await certIntegrator.updateCourseState(
         ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
         ["0x0000000000000000000000000000000000000000000000000000000000000003"]
       );
-
-      await certIntegrator.updateCourseState(
-        ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
-        ["0x0000000000000000000000000000000000000000000000000000000000000004"]
-      );
-
-      const blockNumber = await ethers.provider.getBlockNumber();
+      const blockNumber3 = await ethers.provider.getBlockNumber();
 
       expect(
-        await certIntegrator.getLastRoot("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.equal("0x0000000000000000000000000000000000000000000000000000000000000004");
+        await certIntegrator.contractData(
+          "0x736f6d65636f757273656e616d65000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000001"
+        )
+      ).to.equal(blockNumber1);
 
       expect(
-        await certIntegrator.getLastBlock("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.equal(blockNumber);
+        await certIntegrator.contractData(
+          "0x736f6d65636f757273656e616d65000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000002"
+        )
+      ).to.equal(blockNumber2);
+
+      expect(
+        await certIntegrator.contractData(
+          "0x736f6d65636f757273656e616d65000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000003"
+        )
+      ).to.equal(blockNumber3);
+
+      expect(
+        await certIntegrator.contractData(
+          "0x736f6d65636f757273656e616d65000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000004"
+        )
+      ).to.equal(0);
     });
   });
 });
