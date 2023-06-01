@@ -2,7 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/ICertIntegrator.sol";
+import "./interfaces/ICertIntegrator.sol";
 
 contract CertIntegrator is Ownable, ICertIntegrator {
     // Mapping course name to its data
@@ -24,14 +24,14 @@ contract CertIntegrator is Ownable, ICertIntegrator {
         bytes[] memory courses_,
         bytes[] memory states_
     ) external onlyOwner {
-        uint256 coursesLength = courses_.length;
+        uint256 coursesLength_ = courses_.length;
 
         require(
-            coursesLength == states_.length,
-            "updateCourseState: courses and states arrays must be the same size"
+            coursesLength_ == states_.length,
+            "CertIntegrator: courses and states arrays must be the same size"
         );
 
-        for (uint256 i = 0; i < coursesLength; i++) {
+        for (uint256 i = 0; i < coursesLength_; i++) {
             Data memory newData = Data(block.number, states_[i]);
             contractData[courses_[i]].push(newData);
         }
@@ -49,7 +49,7 @@ contract CertIntegrator is Ownable, ICertIntegrator {
      */
     function getLastData(bytes memory course_) external view returns (Data memory) {
         uint256 length = contractData[course_].length;
-        require(length > 0, "getLastData: course info is empty");
+        require(length > 0, "CertIntegrator: course info is empty");
         return contractData[course_][length - 1];
     }
 
