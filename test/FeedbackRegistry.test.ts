@@ -50,6 +50,7 @@ describe("FeedbackRegistry", async () => {
       "0x0000000000000000000000000000000000000000000000000000000000000001",
       "0x0000000000000000000000000000000000000000000000000000000000000002",
       "0x2018445dcff761ed409e5595ab55308a99828d7f803240a005d8bbb4d1c69924",
+      "0xfff7d65808452f96d578a2c159315b487a4af2eda920ad9b2e572ff47309c714",
     ];
 
     for (let i = 0; i < values.length; i++) {
@@ -63,11 +64,11 @@ describe("FeedbackRegistry", async () => {
     [USER1, USER2] = await ethers.getSigners();
 
     IPFS = "0x7af6ecdae63aa6c4835fd2a146afb79d48610e5ae23769716543be21b6a11fed";
-    KEY = "0x00000000000000000000000052749da41b7196a7001d85ce38fa794fe0f9044e";
-    VAL = "0x0000000000000000000000000000000000000000000000000000000000000002";
+    KEY = "0x4e04f9e04f79fa38ce851d00a796711ba49d7452000000000000000000000000";
+    VAL = "0x0700000000000000000000000000000000000000000000000000000000000000";
     PROOF = [
-      "0x212aa7bcc2bb05ce87b473e078e9c949d56d6a720d14a7a28fe00e9e26d831d4",
-      "0x15fe426825eee5fbb0b4f80e24a5a7742115c44ac909684ae21de6b1de3351d2",
+      "0x881f67d73a511142dec454a3740715d651757fa8253c472d34ad0d445675b81c",
+      "0x0a2f9c391b35de90fd822faaf8bce96bc8bd07e351fbd7d30337be7296295628",
     ];
 
     certIntegrator = await initCertIntegrator();
@@ -97,9 +98,22 @@ describe("FeedbackRegistry", async () => {
     it("should revert merklee tree verification", async () => {
       const signature = await USER1.signMessage(ethers.utils.arrayify(IPFS));
 
+      let proof = [
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "0x9f341c74c45f6f3a785981307c1d07a060b936fe5f4d022c0f9b64546f590818",
+      ];
+
+      await expect(
+        feedbackRegistry.connect(USER1).addFeedback(COURSE, signature, proof, KEY, VAL, IPFS)
+      ).to.be.revertedWith("FeedbackRegistry: wrong merkle tree verification");
+    });
+
+    it("should revert empty merklee tree verification", async () => {
+      const signature = await USER1.signMessage(ethers.utils.arrayify(IPFS));
+
       await expect(
         feedbackRegistry.connect(USER1).addFeedback(COURSE, signature, [], KEY, VAL, IPFS)
-      ).to.be.revertedWith("FeedbackRegistry: wrong merkle tree verification");
+      ).to.be.revertedWith("SMTVerifier: sparse merkle tree proof is empty");
     });
 
     it("should revert wrong ecdsa signature", async () => {
@@ -108,23 +122,6 @@ describe("FeedbackRegistry", async () => {
       await expect(
         feedbackRegistry.connect(USER2).addFeedback(COURSE, signature, PROOF, KEY, VAL, IPFS)
       ).to.be.revertedWith("FeedbackRegistry: wrong signature");
-    });
-
-    it("should revert wrong data length", async () => {
-      const signature = await USER1.signMessage(ethers.utils.arrayify(IPFS));
-
-      await expect(
-        feedbackRegistry
-          .connect(USER1)
-          .addFeedback(
-            COURSE,
-            signature,
-            PROOF,
-            KEY,
-            VAL,
-            "0x7af6ecdae63aa6c4835fd2a146afb79d48610e5ae23769716543be21b6a1"
-          )
-      ).to.be.revertedWith("FeedbackRegistry: input data must be at least 32 bytes");
     });
   });
 

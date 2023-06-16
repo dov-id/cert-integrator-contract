@@ -26,28 +26,17 @@ import "./interfaces/ICertIntegrator.sol";
  *    service. Also, the contract should bind up every state to the block number. It will provide
  *    an ability for external services to set some interval of blocks in which they will consider
  *    this state valid.
- *
  */
-
 contract CertIntegrator is Ownable, ICertIntegrator {
-    // Mapping course name to its data
+    // course name => data (root+block)
     mapping(bytes => Data[]) public contractData;
 
     /**
-     * @dev Updates the contract information abouts course states.
-     *
-     * This function takes two equal size arrays that contains courses
-     * names and merkle tree roots (to identify whether the user in course).
-     * Each root in the list corresponds to the course with such name.
-     *
-     * Requirements:
-     *
-     * - the `courses` and `states` arrays length must be equal.
-     *
+     * @inheritdoc ICertIntegrator
      */
     function updateCourseState(
         bytes[] memory courses_,
-        bytes[] memory states_
+        bytes32[] memory states_
     ) external onlyOwner {
         uint256 coursesLength_ = courses_.length;
 
@@ -63,14 +52,14 @@ contract CertIntegrator is Ownable, ICertIntegrator {
     }
 
     /**
-     * @dev Retrieves info by course name.
+     * @inheritdoc ICertIntegrator
      */
     function getData(bytes memory course_) external view returns (Data[] memory) {
         return contractData[course_];
     }
 
     /**
-     * @dev Retrieves last info by course name.
+     * @inheritdoc ICertIntegrator
      */
     function getLastData(bytes memory course_) external view returns (Data memory) {
         uint256 length_ = contractData[course_].length;
@@ -81,7 +70,7 @@ contract CertIntegrator is Ownable, ICertIntegrator {
     }
 
     /**
-     * @dev Retrieves info length by course name.
+     * @inheritdoc ICertIntegrator
      */
     function getDataLength(bytes memory course_) external view returns (uint256) {
         return contractData[course_].length;
