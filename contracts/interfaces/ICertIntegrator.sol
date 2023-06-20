@@ -2,8 +2,10 @@
 pragma solidity ^0.8.9;
 
 interface ICertIntegrator {
-    // Structure to store contract data:
-    // merkle tree root and corresponding blocknumber
+    /**
+     * Structure to store contract data:
+     * merkle tree root and corresponding block number
+     */
     struct Data {
         uint256 blockNumber;
         bytes32 root;

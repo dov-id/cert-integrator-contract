@@ -1,4 +1,4 @@
 export = {
-  skipFiles: ["/interfaces", "/mock"],
+  skipFiles: ["/interfaces", "/mock", "TokenContract.sol", "TokenFactory.sol"],
   configureYulOptimizer: true,
 };

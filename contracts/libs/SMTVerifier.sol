@@ -164,6 +164,7 @@ library SMTVerifier {
         bytes32 elem1_,
         bytes32 elem2_
     ) private pure returns (bytes32) {
+        // return PoseidonUnit2L.poseidon([elem1_, elem2_]);
         return poseidon2Hash_.poseidon([elem1_, elem2_]);
     }
 

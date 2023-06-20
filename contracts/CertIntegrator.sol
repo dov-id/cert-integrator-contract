@@ -46,8 +46,8 @@ contract CertIntegrator is Ownable, ICertIntegrator {
         );
 
         for (uint256 i = 0; i < coursesLength_; i++) {
-            Data memory newData = Data(block.number, states_[i]);
-            contractData[courses_[i]].push(newData);
+            Data memory newData_ = Data(block.number, states_[i]);
+            contractData[courses_[i]].push(newData_);
         }
     }
 
