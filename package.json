@@ -32,9 +32,10 @@
   },
   "dependencies": {
     "@dlsl/dev-modules": "^2.3.2",
+    "@iden3/contracts": "^1.0.0",
     "@openzeppelin/contracts": "4.8.3",
     "@openzeppelin/contracts-upgradeable": "4.8.3",
-    "circomlibjs": "^0.1.2",
+    "circomlibjs": "^0.1.7",
     "dotenv": "^10.0.0",
     "hardhat": "^2.12.0",
     "typechain": "^8.1.0"

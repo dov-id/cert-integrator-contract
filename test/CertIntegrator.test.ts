@@ -1,12 +1,14 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+
 import { Reverter } from "./helpers/reverter";
 
 describe("CertIntegrator", () => {
   const reverter = new Reverter();
 
-  let certIntegrator: any;
+  let certIntegrator: Contract;
 
   let OWNER: SignerWithAddress;
   let USER: SignerWithAddress;

@@ -2,9 +2,10 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { poseidonContract } from "circomlibjs";
 
 import { Reverter } from "./helpers/reverter";
+import { getPoseidons } from "./helpers/poseidons";
+import { initCertIntegrator } from "./helpers/utils";
 
 describe("Verifier", async () => {
   const reverter = new Reverter();
@@ -52,49 +53,12 @@ describe("Verifier", async () => {
     tokenSymbol: string
   ): Promise<Contract> {
     await tokenFactory.connect(USER1).deployTokenContract([tokenId, tokenName, tokenSymbol]);
+
     const addr = await tokenFactory.tokenContractByIndex(tokenId);
+
     const TokenContract = await ethers.getContractFactory("TokenContract");
 
     return TokenContract.attach(addr);
-  }
-
-  async function getPoseidons() {
-    const [deployer] = await ethers.getSigners();
-    const PoseidonHasher2 = new ethers.ContractFactory(
-      poseidonContract.generateABI(2),
-      poseidonContract.createCode(2),
-      deployer
-    );
-    const poseidonHasher2 = await PoseidonHasher2.deploy();
-    await poseidonHasher2.deployed();
-
-    const PoseidonHasher3 = new ethers.ContractFactory(
-      poseidonContract.generateABI(3),
-      poseidonContract.createCode(3),
-      deployer
-    );
-    const poseidonHasher3 = await PoseidonHasher3.deploy();
-    await poseidonHasher3.deployed();
-
-    return { poseidonHasher2, poseidonHasher3 };
-  }
-
-  async function initCertIntegrator() {
-    const certIntegratorContract = await ethers.getContractFactory("CertIntegrator");
-    certIntegrator = await certIntegratorContract.deploy();
-
-    const values = [
-      "0x0000000000000000000000000000000000000000000000000000000000000001",
-      "0x0000000000000000000000000000000000000000000000000000000000000002",
-      "0x2018445dcff761ed409e5595ab55308a99828d7f803240a005d8bbb4d1c69924",
-      "0xfff7d65808452f96d578a2c159315b487a4af2eda920ad9b2e572ff47309c714",
-    ];
-
-    for (let i = 0; i < values.length; i++) {
-      await certIntegrator.updateCourseState([COURSE], [values[i]]);
-    }
-
-    return certIntegrator;
   }
 
   before(async () => {
@@ -113,13 +77,18 @@ describe("Verifier", async () => {
     tokenContaract = await getTokenContract(tokenFactory, 1, "TokenName", "TN");
     COURSE = tokenContaract.address;
 
-    certIntegrator = await initCertIntegrator();
+    certIntegrator = await initCertIntegrator(COURSE);
 
     let { poseidonHasher2, poseidonHasher3 } = await getPoseidons();
 
-    const verifierContract = await ethers.getContractFactory("Verifier");
+    const verifierContract = await ethers.getContractFactory("Verifier", {
+      libraries: {
+        PoseidonUnit2L: poseidonHasher2.address,
+        PoseidonUnit3L: poseidonHasher3.address,
+      },
+    });
 
-    verifier = await verifierContract.deploy(certIntegrator.address, poseidonHasher2.address, poseidonHasher3.address);
+    verifier = await verifierContract.deploy(certIntegrator.address);
 
     await tokenContaract.connect(USER1).setNewAdmin(verifier.address);
 
@@ -132,9 +101,10 @@ describe("Verifier", async () => {
     it("should mint token", async () => {
       const signature = await USER1.signMessage(ethers.utils.arrayify(IPFS));
 
-      let mintedTokenId = await verifier.connect(USER1).verifyContract(COURSE, signature, PROOF, KEY, VAL, IPFS);
+      let transaction = await verifier.connect(USER1).verifyContract(COURSE, signature, PROOF, KEY, VAL, IPFS);
+      const tx = await transaction.wait();
 
-      expect(mintedTokenId.value).to.equal(0);
+      expect(parseInt(tx.events[0].topics[3], 16)).to.equal(0);
     });
 
     it("should revert merklee tree verification", async () => {

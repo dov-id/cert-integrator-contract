@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.9;
+pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@dlsl/dev-modules/libs/arrays/Paginator.sol";
 
 import "./interfaces/IFeedbackRegistry.sol";
 import "./interfaces/ICertIntegrator.sol";
-import "./interfaces/IPoseidonHash.sol";
 import "./libs/SMTVerifier.sol";
 
 /**
@@ -44,13 +43,8 @@ contract FeedbackRegistry is IFeedbackRegistry {
 
     address internal _certIntegrator;
 
-    IPoseidonHash internal _poseidon2Hash;
-    IPoseidonHash internal _poseidon3Hash;
-
-    constructor(address certIntegrator_, address poseidon2Hash_, address poseidon3Hash_) {
+    constructor(address certIntegrator_) {
         _certIntegrator = certIntegrator_;
-        _poseidon2Hash = IPoseidonHash(poseidon2Hash_);
-        _poseidon3Hash = IPoseidonHash(poseidon3Hash_);
     }
 
     /**
@@ -74,13 +68,7 @@ contract FeedbackRegistry is IFeedbackRegistry {
         );
 
         require(
-            courseData_.root.verifyProof(
-                key_,
-                value_,
-                merkletreeProof_,
-                _poseidon2Hash,
-                _poseidon3Hash
-            ) == true,
+            courseData_.root.verifyProof(key_, value_, merkletreeProof_) == true,
             "FeedbackRegistry: wrong merkle tree verification"
         );
 

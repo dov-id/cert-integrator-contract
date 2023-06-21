@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.9;
+pragma solidity 0.8.16;
 
-import "../interfaces/IPoseidonHash.sol";
+import "@iden3/contracts/lib/Poseidon.sol";
 
 /**
- *  @notice This library is needed for verifying sparse merkle tree proof, that are generated with
+ *  1. This library is needed for verifying sparse merkle tree proof, that are generated with
  *  help of [Sparse Merkle Tree](https://github.com/iden3/go-merkletree-sql) in backend service,
  *  written in Golang (to generate proof just use `GenerateProof` method from the library).
  *
- *  This realization had some uses Poseidon hashing as a main hash function. The main repo for usage
+ *  2. This realization had some uses Poseidon hashing as a main hash function. The main repo for usage
  *  can be found in [circomlibjs](https://github.com/iden3/circomlibjs). Example of its usage and
  *  linking can be found in tests for this library.
  *
- *  Gas usage for main `verifyProof` method is:
- *  Min: ???
- *  Avg: ???
- *  Max: ???
+ *  3. Gas usage for main `verifyProof` method is:
+ *      a. Min: 252226
+ *      b. Avg: 252418
+ *      c. Max: 252610
  *
- *  With this library there is no need to implement own realization for proof verifying in iden3 sparse
+ *  4. With this library there is no need to implement own realization for proof verifying in iden3 sparse
  *  merklee tree realization.
  */
 library SMTVerifier {
@@ -25,11 +25,9 @@ library SMTVerifier {
         bytes32 root_,
         bytes32 key_,
         bytes32 value_,
-        bytes32[] memory proof_,
-        IPoseidonHash poseidon2Hash_,
-        IPoseidonHash poseidon3Hash_
+        bytes32[] memory proof_
     ) internal pure returns (bool) {
-        return _verifyProof(root_, key_, value_, proof_, poseidon2Hash_, poseidon3Hash_);
+        return _verifyProof(root_, key_, value_, proof_);
     }
 
     /**
@@ -49,8 +47,6 @@ library SMTVerifier {
      *  @param key_ the key to verify in smt
      *  @param value_ the value to verify in smt
      *  @param proof_ sparse merkle tree proof
-     *  @param poseidon2Hash_ poseidon hashing for 2 elements contract
-     *  @param poseidon3Hash_ poseidon hashing for 3 elements contract
      *  @return true when retireved smt root from proof is equal to the given `root_`
      *
      *  Requirements:
@@ -61,41 +57,31 @@ library SMTVerifier {
         bytes32 root_,
         bytes32 key_,
         bytes32 value_,
-        bytes32[] memory proof_,
-        IPoseidonHash poseidon2Hash_,
-        IPoseidonHash poseidon3Hash_
+        bytes32[] memory proof_
     ) private pure returns (bool) {
         uint256 proofLength_ = proof_.length;
 
         require(proofLength_ > 0, "SMTVerifier: sparse merkle tree proof is empty");
 
-        bytes32 midKey_ = _swapEndianness(
+        uint256 midKey_ = _swapEndianness(
             _newPoseidonHash3(
-                poseidon3Hash_,
-                _swapEndianness(key_),
-                _swapEndianness(value_),
-                bytes32(uint256(1))
+                _swapEndianness(uint256(key_)),
+                _swapEndianness(uint256(value_)),
+                uint256(1)
             )
         );
-        bytes32 siblingKey_;
-        for (uint256 lvl = proofLength_ - 1; ; lvl--) {
-            siblingKey_ = proof_[lvl];
 
-            if (_testBit(key_, uint256(lvl))) {
+        uint256 siblingKey_;
+        for (uint256 lvl = proofLength_ - 1; ; lvl--) {
+            siblingKey_ = uint256(proof_[lvl]);
+
+            if (_testBit(key_, lvl)) {
                 midKey_ = _swapEndianness(
-                    _newPoseidonHash2(
-                        poseidon2Hash_,
-                        _swapEndianness(siblingKey_),
-                        _swapEndianness(midKey_)
-                    )
+                    _newPoseidonHash2(_swapEndianness(siblingKey_), _swapEndianness(midKey_))
                 );
             } else {
                 midKey_ = _swapEndianness(
-                    _newPoseidonHash2(
-                        poseidon2Hash_,
-                        _swapEndianness(midKey_),
-                        _swapEndianness(siblingKey_)
-                    )
+                    _newPoseidonHash2(_swapEndianness(midKey_), _swapEndianness(siblingKey_))
                 );
             }
 
@@ -104,7 +90,7 @@ library SMTVerifier {
             }
         }
 
-        return midKey_ == root_;
+        return midKey_ == uint256(root_);
     }
 
     /**
@@ -117,14 +103,14 @@ library SMTVerifier {
      *  @param data_ bytes data to swap byte order
      *  @return bytes with swapped `data_` bytes order
      */
-    function _swapEndianness(bytes32 data_) private pure returns (bytes32) {
+    function _swapEndianness(uint256 data_) private pure returns (uint256) {
         uint256 result_;
 
         for (uint i = 0; i < 32; i++) {
             result_ |= (255 & (uint256(data_) >> (i * 8))) << ((31 - i) * 8);
         }
 
-        return bytes32(result_);
+        return result_;
     }
 
     /**
@@ -159,13 +145,8 @@ library SMTVerifier {
      *  @param elem2_ the second element
      *  @return bytes32 poseidon hash from elements
      */
-    function _newPoseidonHash2(
-        IPoseidonHash poseidon2Hash_,
-        bytes32 elem1_,
-        bytes32 elem2_
-    ) private pure returns (bytes32) {
-        // return PoseidonUnit2L.poseidon([elem1_, elem2_]);
-        return poseidon2Hash_.poseidon([elem1_, elem2_]);
+    function _newPoseidonHash2(uint256 elem1_, uint256 elem2_) private pure returns (uint256) {
+        return PoseidonUnit2L.poseidon([elem1_, elem2_]);
     }
 
     /**
@@ -179,11 +160,10 @@ library SMTVerifier {
      *  @return bytes32 poseidon hash from elements
      */
     function _newPoseidonHash3(
-        IPoseidonHash poseidon3Hash_,
-        bytes32 elem1_,
-        bytes32 elem2_,
-        bytes32 elem3_
-    ) private pure returns (bytes32) {
-        return poseidon3Hash_.poseidon([elem1_, elem2_, elem3_]);
+        uint256 elem1_,
+        uint256 elem2_,
+        uint256 elem3_
+    ) private pure returns (uint256) {
+        return PoseidonUnit3L.poseidon([elem1_, elem2_, elem3_]);
     }
 }

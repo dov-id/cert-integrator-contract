@@ -5,6 +5,10 @@ import { ethers } from "hardhat";
 
 const CertIntegrator = artifacts.require("CertIntegrator");
 const FeedbackRegistry = artifacts.require("FeedbackRegistry");
+const Verifier = artifacts.require("Verifier");
+
+const PoseidonUnit2L = artifacts.require("PoseidonUnit2L");
+const PoseidonUnit3L = artifacts.require("PoseidonUnit3L");
 
 require("dotenv").config();
 
@@ -35,18 +39,25 @@ async function getPoseidons() {
 
 export = async (deployer: Deployer, logger: Logger) => {
   const { poseidonHasher2, poseidonHasher3 } = await getPoseidons();
+
   const certIntegrator = await deployer.deploy(CertIntegrator);
-  const feedbackRegistry = await deployer.deploy(
-    FeedbackRegistry,
-    certIntegrator.address,
-    poseidonHasher2.address,
-    poseidonHasher3.address
-  );
+
+  const poseidonUnit2L = await PoseidonUnit2L.at(poseidonHasher2.address);
+  const poseidonUnit3L = await PoseidonUnit3L.at(poseidonHasher3.address);
+
+  await deployer.link(poseidonUnit2L, FeedbackRegistry);
+  await deployer.link(poseidonUnit3L, FeedbackRegistry);
+
+  const feedbackRegistry = await deployer.deploy(FeedbackRegistry, certIntegrator.address);
+
+  await deployer.link(poseidonUnit2L, Verifier);
+  await deployer.link(poseidonUnit3L, Verifier);
+
+  const verifier = await deployer.deploy(Verifier, certIntegrator.address);
 
   logger.logContracts(
-    ["Poseidon2", poseidonHasher2.address],
-    ["Poseidon3", poseidonHasher3.address],
     ["CertIntegrator", certIntegrator.address],
-    ["FeedbackRegistry", feedbackRegistry.address]
+    ["FeedbackRegistry", feedbackRegistry.address],
+    ["Verifier", verifier.address]
   );
 };

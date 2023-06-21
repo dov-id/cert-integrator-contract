@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.19;
+pragma solidity 0.8.16;
 
 import "@dlsl/dev-modules/contracts-registry/pools/proxy/ProxyBeacon.sol";
 import "@dlsl/dev-modules/contracts-registry/pools/pool-factory/proxy/PublicBeaconProxy.sol";
