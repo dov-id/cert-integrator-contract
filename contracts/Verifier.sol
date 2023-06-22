@@ -9,7 +9,25 @@ import "./libs/SMTVerifier.sol";
 /**
  *  @notice The Verifier contract
  *
- *  ADD SOME DOCS HERE
+ *  1. When we have some token in main chain, but at the same time interact with another chains,
+ *  sometimes there is a need to operate data directly from one of these chains.
+ *
+ *  2. This contract solves such problem, by verifying that user definitely owns such token in
+ *  main chain and minting token with the same uri.
+ *
+ *  3. Verification takes part according to such flow:
+ *      a. Our contract verifies signature
+ *      b. It makes call to integrator contract in order to get last root with block that was
+ *         published there. Then using sparse merkle tree proof, key and value verifies proof
+ *         with help of SMTVerifier lib
+ *      c. If everything was processed without errors verifier contract will make a call to
+ *         the contract address to mint new token in side-chain.
+ *
+ *  4. Note:
+ *      a. As signature now we process ECDSA signature from function caller
+ *      b. In ECDSA signature temporary must be signed `key_` parameter
+ *      c. As merkle tree proof contract waits Sparse Merkle Tree Proof. During testing was used
+ *         proofs from such [realization](https://github.com/iden3/go-merkletree-sql)
  */
 contract Verifier is IVerifier {
     using ECDSA for bytes32;
@@ -25,18 +43,17 @@ contract Verifier is IVerifier {
      * @inheritdoc IVerifier
      */
     function verifyContract(
-        address course_,
+        address contract_,
         bytes memory signature_,
         bytes32[] memory merkletreeProof_,
         bytes32 key_,
         bytes32 value_,
-        bytes32 ipfsHash_,
         string memory tokenUri_
     ) external returns (uint256) {
-        require(_verifySignature(ipfsHash_, signature_) == true, "Verifier: wrong signature");
+        require(_verifySignature(key_, signature_) == true, "Verifier: wrong signature");
 
         (bool success_, bytes memory data_) = _integrator.call(
-            abi.encodeWithSignature("getLastData(bytes)", abi.encodePacked(course_))
+            abi.encodeWithSignature("getLastData(bytes)", abi.encodePacked(contract_))
         );
 
         require(success_, "Verifier: failed to get last data");
@@ -48,7 +65,7 @@ contract Verifier is IVerifier {
             "Verifier: wrong merkle tree verification"
         );
 
-        (success_, data_) = course_.call(
+        (success_, data_) = contract_.call(
             abi.encodeWithSignature("mintToken(address,string)", msg.sender, tokenUri_)
         );
 
