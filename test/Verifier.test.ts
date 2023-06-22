@@ -21,6 +21,7 @@ describe("Verifier", async () => {
   let KEY: string;
   let VAL: string;
   let PROOF: string[];
+  let URI: string;
 
   let COURSE: string;
 
@@ -71,6 +72,7 @@ describe("Verifier", async () => {
       "0x881f67d73a511142dec454a3740715d651757fa8253c472d34ad0d445675b81c",
       "0x0a2f9c391b35de90fd822faaf8bce96bc8bd07e351fbd7d30337be7296295628",
     ];
+    URI = "ipfs/ uri";
 
     const tokenFactory = await getTokenFactory();
 
@@ -101,7 +103,7 @@ describe("Verifier", async () => {
     it("should mint token", async () => {
       const signature = await USER1.signMessage(ethers.utils.arrayify(IPFS));
 
-      let transaction = await verifier.connect(USER1).verifyContract(COURSE, signature, PROOF, KEY, VAL, IPFS);
+      let transaction = await verifier.connect(USER1).verifyContract(COURSE, signature, PROOF, KEY, VAL, IPFS, URI);
       const tx = await transaction.wait();
 
       expect(parseInt(tx.events[0].topics[3], 16)).to.equal(0);
@@ -115,17 +117,17 @@ describe("Verifier", async () => {
         "0x9f341c74c45f6f3a785981307c1d07a060b936fe5f4d022c0f9b64546f590818",
       ];
 
-      await expect(verifier.connect(USER1).verifyContract(COURSE, signature, proof, KEY, VAL, IPFS)).to.be.revertedWith(
-        "Verifier: wrong merkle tree verification"
-      );
+      await expect(
+        verifier.connect(USER1).verifyContract(COURSE, signature, proof, KEY, VAL, IPFS, URI)
+      ).to.be.revertedWith("Verifier: wrong merkle tree verification");
     });
 
     it("should revert wrong ecdsa signature", async () => {
       const signature = await USER1.signMessage(ethers.utils.arrayify(IPFS));
 
-      await expect(verifier.connect(USER2).verifyContract(COURSE, signature, PROOF, KEY, VAL, IPFS)).to.be.revertedWith(
-        "Verifier: wrong signature"
-      );
+      await expect(
+        verifier.connect(USER2).verifyContract(COURSE, signature, PROOF, KEY, VAL, IPFS, URI)
+      ).to.be.revertedWith("Verifier: wrong signature");
     });
   });
 });

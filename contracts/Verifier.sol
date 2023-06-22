@@ -4,8 +4,6 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./interfaces/IVerifier.sol";
-import "./interfaces/ICertIntegrator.sol";
-import "./interfaces/ITokenContract.sol";
 import "./libs/SMTVerifier.sol";
 
 /**
@@ -17,10 +15,10 @@ contract Verifier is IVerifier {
     using ECDSA for bytes32;
     using SMTVerifier for bytes32;
 
-    address internal _certIntegrator;
+    address internal _integrator;
 
-    constructor(address certIntegrator_) {
-        _certIntegrator = certIntegrator_;
+    constructor(address integrator_) {
+        _integrator = integrator_;
     }
 
     /**
@@ -32,27 +30,31 @@ contract Verifier is IVerifier {
         bytes32[] memory merkletreeProof_,
         bytes32 key_,
         bytes32 value_,
-        bytes32 ipfsHash_
+        bytes32 ipfsHash_,
+        string memory tokenUri_
     ) external returns (uint256) {
         require(_verifySignature(ipfsHash_, signature_) == true, "Verifier: wrong signature");
 
-        ICertIntegrator.Data memory courseData_ = ICertIntegrator(_certIntegrator).getLastData(
-            _addressToBytes(course_)
+        (bool success_, bytes memory data_) = _integrator.call(
+            abi.encodeWithSignature("getLastData(bytes)", abi.encodePacked(course_))
         );
+
+        require(success_, "Verifier: failed to get last data");
+
+        Data memory courseData_ = abi.decode(data_, (Data));
 
         require(
             courseData_.root.verifyProof(key_, value_, merkletreeProof_) == true,
             "Verifier: wrong merkle tree verification"
         );
 
-        // TODO: think about retrieving token uri from existing one
-        // to save the same certificate
+        (success_, data_) = course_.call(
+            abi.encodeWithSignature("mintToken(address,string)", msg.sender, tokenUri_)
+        );
 
-        return ITokenContract(course_).mintToken(msg.sender, "TOKEN.URI");
-    }
+        require(success_, "Verifier: failed to mint token");
 
-    function _addressToBytes(address a) internal pure returns (bytes memory) {
-        return abi.encodePacked(a);
+        return uint256(bytes32(data_));
     }
 
     /**
