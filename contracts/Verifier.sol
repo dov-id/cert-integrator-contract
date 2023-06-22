@@ -45,7 +45,7 @@ contract Verifier is IVerifier {
     function verifyContract(
         address contract_,
         bytes memory signature_,
-        bytes32[] memory merkletreeProof_,
+        bytes32[] memory merkleTreeProof_,
         bytes32 key_,
         bytes32 value_,
         string memory tokenUri_
@@ -61,7 +61,7 @@ contract Verifier is IVerifier {
         Data memory courseData_ = abi.decode(data_, (Data));
 
         require(
-            courseData_.root.verifyProof(key_, value_, merkletreeProof_) == true,
+            courseData_.root.verifyProof(key_, value_, merkleTreeProof_) == true,
             "Verifier: wrong merkle tree verification"
         );
 

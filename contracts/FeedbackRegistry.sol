@@ -53,7 +53,7 @@ contract FeedbackRegistry is IFeedbackRegistry {
     function addFeedback(
         bytes memory course_,
         bytes memory signature_,
-        bytes32[] memory merkletreeProof_,
+        bytes32[] memory merkleTreeProof_,
         bytes32 key_,
         bytes32 value_,
         bytes32 ipfsHash_
@@ -68,7 +68,7 @@ contract FeedbackRegistry is IFeedbackRegistry {
         );
 
         require(
-            courseData_.root.verifyProof(key_, value_, merkletreeProof_) == true,
+            courseData_.root.verifyProof(key_, value_, merkleTreeProof_) == true,
             "FeedbackRegistry: wrong merkle tree verification"
         );
 

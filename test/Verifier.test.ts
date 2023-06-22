@@ -12,7 +12,7 @@ describe("Verifier", async () => {
 
   let verifier: Contract;
   let certIntegrator: Contract;
-  let tokenContaract: Contract;
+  let tokenContract: Contract;
 
   let USER1: SignerWithAddress;
   let USER2: SignerWithAddress;
@@ -22,7 +22,7 @@ describe("Verifier", async () => {
   let PROOF: string[];
   let URI: string;
 
-  let COURSE: string;
+  let CONTRACT: string;
 
   async function getTokenFactory(): Promise<Contract> {
     const TokenFactory = await ethers.getContractFactory("TokenFactory");
@@ -61,6 +61,25 @@ describe("Verifier", async () => {
     return TokenContract.attach(addr);
   }
 
+  async function getVerifierMock(): Promise<Contract> {
+    const verifierMockContract = await ethers.getContractFactory("VerifierMock");
+
+    return verifierMockContract.deploy();
+  }
+
+  async function getVerifier(certIntegratorAddr: string): Promise<Contract> {
+    let { poseidonHasher2, poseidonHasher3 } = await getPoseidons();
+
+    const verifierContract = await ethers.getContractFactory("Verifier", {
+      libraries: {
+        PoseidonUnit2L: poseidonHasher2.address,
+        PoseidonUnit3L: poseidonHasher3.address,
+      },
+    });
+
+    return verifierContract.deploy(certIntegratorAddr);
+  }
+
   before(async () => {
     [USER1, USER2] = await ethers.getSigners();
 
@@ -74,23 +93,14 @@ describe("Verifier", async () => {
 
     const tokenFactory = await getTokenFactory();
 
-    tokenContaract = await getTokenContract(tokenFactory, 1, "TokenName", "TN");
-    COURSE = tokenContaract.address;
+    tokenContract = await getTokenContract(tokenFactory, 1, "TokenName", "TN");
+    CONTRACT = tokenContract.address;
 
-    certIntegrator = await initCertIntegrator(COURSE);
+    certIntegrator = await initCertIntegrator(CONTRACT);
 
-    let { poseidonHasher2, poseidonHasher3 } = await getPoseidons();
+    verifier = await getVerifier(certIntegrator.address);
 
-    const verifierContract = await ethers.getContractFactory("Verifier", {
-      libraries: {
-        PoseidonUnit2L: poseidonHasher2.address,
-        PoseidonUnit3L: poseidonHasher3.address,
-      },
-    });
-
-    verifier = await verifierContract.deploy(certIntegrator.address);
-
-    await tokenContaract.connect(USER1).setNewAdmin(verifier.address);
+    await tokenContract.connect(USER1).setNewAdmin(verifier.address);
 
     await reverter.snapshot();
   });
@@ -101,13 +111,13 @@ describe("Verifier", async () => {
     it("should mint token", async () => {
       const signature = await USER1.signMessage(ethers.utils.arrayify(KEY));
 
-      let transaction = await verifier.connect(USER1).verifyContract(COURSE, signature, PROOF, KEY, VAL, URI);
+      let transaction = await verifier.connect(USER1).verifyContract(CONTRACT, signature, PROOF, KEY, VAL, URI);
       const tx = await transaction.wait();
 
       expect(parseInt(tx.events[0].topics[3], 16)).to.equal(0);
     });
 
-    it("should revert merklee tree verification", async () => {
+    it("should revert merkle tree verification", async () => {
       const signature = await USER1.signMessage(ethers.utils.arrayify(KEY));
 
       let proof = [
@@ -115,17 +125,44 @@ describe("Verifier", async () => {
         "0x9f341c74c45f6f3a785981307c1d07a060b936fe5f4d022c0f9b64546f590818",
       ];
 
-      await expect(verifier.connect(USER1).verifyContract(COURSE, signature, proof, KEY, VAL, URI)).to.be.revertedWith(
-        "Verifier: wrong merkle tree verification"
-      );
+      await expect(
+        verifier.connect(USER1).verifyContract(CONTRACT, signature, proof, KEY, VAL, URI)
+      ).to.be.revertedWith("Verifier: wrong merkle tree verification");
     });
 
     it("should revert wrong ecdsa signature", async () => {
       const signature = await USER1.signMessage(ethers.utils.arrayify(KEY));
 
-      await expect(verifier.connect(USER2).verifyContract(COURSE, signature, PROOF, KEY, VAL, URI)).to.be.revertedWith(
-        "Verifier: wrong signature"
+      await expect(
+        verifier.connect(USER2).verifyContract(CONTRACT, signature, PROOF, KEY, VAL, URI)
+      ).to.be.revertedWith("Verifier: wrong signature");
+    });
+
+    it("should revert getting last data", async () => {
+      const signature = await USER1.signMessage(ethers.utils.arrayify(KEY));
+
+      const verifierMock = await getVerifierMock();
+
+      let newVerifier = await getVerifier(verifierMock.address);
+
+      await expect(
+        newVerifier.connect(USER1).verifyContract(CONTRACT, signature, PROOF, KEY, VAL, URI)
+      ).to.be.revertedWith("Verifier: failed to get last data");
+    });
+
+    it("should revert ", async () => {
+      const signature = await USER1.signMessage(ethers.utils.arrayify(KEY));
+
+      const verifierMock = await getVerifierMock();
+
+      await certIntegrator.updateCourseState(
+        [verifierMock.address],
+        ["0xfff7d65808452f96d578a2c159315b487a4af2eda920ad9b2e572ff47309c714"]
       );
+
+      await expect(
+        verifier.connect(USER1).verifyContract(verifierMock.address, signature, PROOF, KEY, VAL, URI)
+      ).to.be.revertedWith("Verifier: failed to mint token");
     });
   });
 });

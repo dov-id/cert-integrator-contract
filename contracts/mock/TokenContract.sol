@@ -3,8 +3,8 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 
-import "./interfaces/ITokenFactory.sol";
-import "./interfaces/ITokenContract.sol";
+import "../interfaces/ITokenFactory.sol";
+import "../interfaces/ITokenContract.sol";
 
 contract TokenContract is ITokenContract, ERC721EnumerableUpgradeable {
     ITokenFactory public override tokenFactory;

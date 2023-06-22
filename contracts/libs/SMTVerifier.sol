@@ -18,7 +18,7 @@ import "@iden3/contracts/lib/Poseidon.sol";
  *      c. Max: 252610
  *
  *  4. With this library there is no need to implement own realization for proof verifying in iden3 sparse
- *  merklee tree realization.
+ *  merkle tree realization.
  */
 library SMTVerifier {
     function verifyProof(
@@ -33,21 +33,25 @@ library SMTVerifier {
     /**
      *  @dev Verifies root from proof.
      *
-     *  @notice Function takes some params and requires merkle tree proof
-     *  array not to be empty to have ability to retrieve root from it. Then,
-     *  it generates tree leaf from `key_`, `value_` and `1` (level in tree)
-     *  with help of poseidon hashing for 3 elements (`poseidon3Hash_`). On the
-     *  next step it starts processing proof elements (starting from the last
-     *  element (`proof_.length - 1`)) until all are proccessed. At every
-     *  iteraton it checks if the bit is set (not zero) to get kind of a path
-     *  from the root to the leaf. When all elements are processed, retreieved
-     *  node compared with given root to get response.
+     *  1. Function takes some params and requires merkle tree proof
+     *  array not to be empty to have ability to retrieve root from it.
+     *
+     *  2. Then, it generates tree leaf from `key_`, `value_` and `1` (level in tree)
+     *  with help of poseidon hashing for 3 elements (`poseidon3Hash_`).
+     *
+     *  3. On the next step it starts processing proof elements (starting from
+     *  the last element (`proof_.length - 1`)) until all are processed. At every
+     *  iteration it checks if the bit is set (not zero) to get kind of a path
+     *  from the root to the leaf.
+     *
+     *  4. When all elements are processed, retrieved node compared with given root
+     *  to get response.
      *
      *  @param root_ merkle tree root to verify with
-     *  @param key_ the key to verify in smt
-     *  @param value_ the value to verify in smt
+     *  @param key_ the key to verify in SMT
+     *  @param value_ the value to verify in SMT
      *  @param proof_ sparse merkle tree proof
-     *  @return true when retireved smt root from proof is equal to the given `root_`
+     *  @return true when retrieved SMT root from proof is equal to the given `root_`
      *
      *  Requirements:
      *
@@ -72,7 +76,9 @@ library SMTVerifier {
         );
 
         uint256 siblingKey_;
-        for (uint256 lvl = proofLength_ - 1; ; lvl--) {
+        uint256 lvl = proofLength_ - 1;
+
+        while (true) {
             siblingKey_ = uint256(proof_[lvl]);
 
             if (_testBit(key_, lvl)) {
@@ -88,6 +94,8 @@ library SMTVerifier {
             if (lvl == 0) {
                 break;
             }
+
+            lvl--;
         }
 
         return midKey_ == uint256(root_);
@@ -123,7 +131,7 @@ library SMTVerifier {
      *
      *  @param bitmap_ bytes array
      *  @param n_ position of bit to test
-     *  @return true if bit in such postition is set (1)
+     *  @return true if bit in such position is set (1)
      */
     function _testBit(bytes32 bitmap_, uint256 n_) private pure returns (bool) {
         uint256 byteIndex_ = n_ >> 3;

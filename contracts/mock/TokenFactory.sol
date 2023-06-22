@@ -9,8 +9,8 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "@dlsl/dev-modules/libs/arrays/Paginator.sol";
 
-import "./interfaces/ITokenFactory.sol";
-import "./interfaces/ITokenContract.sol";
+import "../interfaces/ITokenFactory.sol";
+import "../interfaces/ITokenContract.sol";
 
 contract TokenFactory is ITokenFactory, OwnableUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
