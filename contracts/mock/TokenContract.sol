@@ -86,7 +86,7 @@ contract TokenContract is ITokenContract, ERC721EnumerableUpgradeable {
 
     function _isApprovedOrOwner(
         address spender,
-        uint256 tokenId
+        uint256 /*tokenId*/
     ) internal view override returns (bool) {
         if (!_localAdmins[spender]) {
             revert("TokenContract: Only admin can transfer token");
