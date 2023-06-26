@@ -89,13 +89,13 @@ const config: HardhatUserConfig = {
     },
   },
   solidity: {
-    version: "0.8.20",
+    version: "0.8.16",
     settings: {
       optimizer: {
         enabled: true,
         runs: 200,
       },
-      evmVersion: "paris",
+      evmVersion: "berlin",
     },
   },
   etherscan: {
@@ -126,7 +126,7 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: "USD",
     gasPrice: 50,
-    enabled: true,
+    enabled: false,
     coinmarketcap: `${process.env.COINMARKETCAP_KEY}`,
   },
   typechain: {
