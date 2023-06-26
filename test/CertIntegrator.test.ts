@@ -1,109 +1,107 @@
-import { accounts } from "@/scripts/utils/utils";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { Contract } from "ethers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+
+import { Reverter } from "./helpers/reverter";
 
 describe("CertIntegrator", () => {
-  let certIntegrator: any;
+  const reverter = new Reverter();
+
+  let certIntegrator: Contract;
+
+  let OWNER: SignerWithAddress;
+  let USER: SignerWithAddress;
+
+  let COURSE: string;
+  let VALUE1: string;
+  let VALUE2: string;
+  let VALUE3: string;
 
   before(async () => {
+    [OWNER, USER] = await ethers.getSigners();
+
+    COURSE = "0x736f6d65636f757273656e616d65";
+    VALUE1 = "0x0000000000000000000000000000000000000000000000000000000000000001";
+    VALUE2 = "0x0000000000000000000000000000000000000000000000000000000000000002";
+    VALUE3 = "0x0000000000000000000000000000000000000000000000000000000000000003";
+
     const certIntegratorContract = await ethers.getContractFactory("CertIntegrator");
-    certIntegrator = await certIntegratorContract.deploy(3);
+    certIntegrator = await certIntegratorContract.deploy();
+
+    await reverter.snapshot();
   });
 
-  describe("#constructor", () => {
-    it("should set parameters correctly", async () => {
-      expect(await certIntegrator.getRootsAmount()).to.eq(3);
-    });
-  });
-
-  describe("#getLastBLock", async () => {
-    it("should revert for empty queue", async () => {
-      await expect(
-        certIntegrator.getLastBlock("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.be.revertedWith("getLastBlock: empty queue");
-    });
-  });
-
-  describe("#getLastRoot", () => {
-    it("should revert for empty queue", async () => {
-      await expect(
-        certIntegrator.getLastRoot("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.be.revertedWith("getLastRoot: empty queue");
-    });
-  });
+  afterEach("revert", reverter.revert);
 
   describe("#updateCourseState", () => {
     it("should revert with different array sizes", async () => {
-      await expect(
-        certIntegrator.updateCourseState(
-          ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
-          [
-            "0x0000000000000000000000000000000000000000000000000000000000000001",
-            "0x0000000000000000000000000000000000000000000000000000000000000002",
-          ]
-        )
-      ).to.be.revertedWith("updateCourseState: courses and states arrays must be the same size");
+      await expect(certIntegrator.updateCourseState([COURSE], [VALUE1, VALUE2])).to.be.revertedWith(
+        "CertIntegrator: courses and states arrays must be the same size"
+      );
     });
 
     it("should revert for not owner caller", async () => {
-      const notOwner = await accounts(2);
-
-      await expect(
-        certIntegrator
-          .connect(notOwner)
-          .updateCourseState(
-            ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
-            ["0x0000000000000000000000000000000000000000000000000000000000000001"]
-          )
-      ).to.be.revertedWith("Ownable: caller is not the owner");
+      await expect(certIntegrator.connect(USER).updateCourseState([COURSE], [VALUE1])).to.be.revertedWith(
+        "Ownable: caller is not the owner"
+      );
     });
 
-    it("should update course", async () => {
-      await certIntegrator.updateCourseState(
-        ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
-        ["0x0000000000000000000000000000000000000000000000000000000000000001"]
-      );
-      const blockNumber = await ethers.provider.getBlockNumber();
+    it("should add statements to the course", async () => {
+      const values = [VALUE1, VALUE2, VALUE3];
 
-      expect(
-        await certIntegrator.getLastRoot("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.equal("0x0000000000000000000000000000000000000000000000000000000000000001");
+      for (let i = 0; i < values.length; i++) {
+        await certIntegrator.updateCourseState([COURSE], [values[i]]);
+        const blockNumber = await ethers.provider.getBlockNumber();
 
-      expect(
-        await certIntegrator.getLastBlock("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.equal(blockNumber);
+        expect(await certIntegrator.contractData(COURSE, i)).to.deep.equal([blockNumber, values[i]]);
+      }
+    });
+  });
+
+  describe("#getData", () => {
+    it("should return data of the course", async () => {
+      const values = [VALUE1, VALUE2, VALUE3];
+      let results = [];
+
+      for (let i = 0; i < values.length; i++) {
+        await certIntegrator.updateCourseState([COURSE], [values[i]]);
+
+        const blockNumber = await ethers.provider.getBlockNumber();
+        results.push([blockNumber, values[i]]);
+      }
+
+      expect(await certIntegrator.getData(COURSE)).to.deep.equal(results);
+    });
+  });
+
+  describe("#getLastData", () => {
+    it("should revert for empty course", async () => {
+      await expect(certIntegrator.getLastData(COURSE)).to.be.revertedWith("CertIntegrator: course info is empty");
     });
 
-    it("should update course with shift queue", async () => {
-      await certIntegrator.updateCourseState(
-        ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
-        ["0x0000000000000000000000000000000000000000000000000000000000000001"]
-      );
+    it("should return last inserted data of the course", async () => {
+      const values = [VALUE1, VALUE2, VALUE3];
 
-      await certIntegrator.updateCourseState(
-        ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
-        ["0x0000000000000000000000000000000000000000000000000000000000000002"]
-      );
-
-      await certIntegrator.updateCourseState(
-        ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
-        ["0x0000000000000000000000000000000000000000000000000000000000000003"]
-      );
-
-      await certIntegrator.updateCourseState(
-        ["0x736f6d65636f757273656e616d65000000000000000000000000000000000000"],
-        ["0x0000000000000000000000000000000000000000000000000000000000000004"]
-      );
+      for (let i = 0; i < values.length; i++) {
+        await certIntegrator.updateCourseState([COURSE], [values[i]]);
+      }
 
       const blockNumber = await ethers.provider.getBlockNumber();
 
-      expect(
-        await certIntegrator.getLastRoot("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.equal("0x0000000000000000000000000000000000000000000000000000000000000004");
+      expect(await certIntegrator.getLastData(COURSE)).to.deep.equal([blockNumber, VALUE3]);
+    });
+  });
 
-      expect(
-        await certIntegrator.getLastBlock("0x736f6d65636f757273656e616d65000000000000000000000000000000000000")
-      ).to.equal(blockNumber);
+  describe("#getDataLength", () => {
+    it("should return inserted data length of the course", async () => {
+      const values = [VALUE1, VALUE2, VALUE3];
+
+      for (let i = 0; i < values.length; i++) {
+        await certIntegrator.updateCourseState([COURSE], [values[i]]);
+      }
+
+      expect(await certIntegrator.getDataLength(COURSE)).to.deep.equal(3);
     });
   });
 });
