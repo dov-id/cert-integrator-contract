@@ -89,14 +89,29 @@ const config: HardhatUserConfig = {
     },
   },
   solidity: {
-    version: "0.8.16",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
+    compilers: [
+      {
+        version: "0.8.16",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          evmVersion: "berlin",
+        },
       },
-      evmVersion: "berlin",
-    },
+      {
+        version: "0.6.7",
+      },
+    ],
+    // overrides: {
+    //   "contracts/RingSignatureMock.sol": {
+    //     version: "0.5.3",
+    //   },
+    //   "contracts/libs/RingSignature.sol": {
+    //     version: "0.5.3",
+    //   }
+    // }
   },
   etherscan: {
     apiKey: {

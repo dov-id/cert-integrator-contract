@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@dlsl/dev-modules/libs/arrays/Paginator.sol";
 
 import "./interfaces/IFeedbackRegistry.sol";
 import "./interfaces/ICertIntegrator.sol";
 import "./libs/SMTVerifier.sol";
+import "./libs/RingSignature.sol";
 
 /**
  *  @notice The Feedback registry contract
@@ -34,13 +34,17 @@ import "./libs/SMTVerifier.sol";
  *  So there will no any anonymity on the Beta version.
  */
 contract FeedbackRegistry is IFeedbackRegistry {
-    using ECDSA for bytes32;
+    using RingSignature for bytes;
     using SMTVerifier for bytes32;
-    using Paginator for bytes32[];
+    using Paginator for string[];
 
     // course name => feedbacks (ipfs)
-    mapping(bytes => bytes32[]) public contractFeedbacks;
+    mapping(bytes => string[]) public contractFeedbacks; //temporary feedback is string, while getting in what format to store ipfs hash
 
+    // courses name => existence (to prevent iterating through all `_courses` array in order to avoid duplicates)
+    mapping(bytes => bool) internal _isAddedCourse;
+    // courses to have ability to retrieve all feebacks in back end service
+    bytes[] internal _courses;
     address internal _certIntegrator;
 
     constructor(address certIntegrator_) {
@@ -50,16 +54,22 @@ contract FeedbackRegistry is IFeedbackRegistry {
     /**
      * @inheritdoc IFeedbackRegistry
      */
+    // bytes courseName, bytes ringSignature, address[] participants, bytes[][] addressesMTP
     function addFeedback(
         bytes memory course_,
-        bytes memory signature_,
-        bytes32[] memory merkleTreeProof_,
-        bytes32 key_,
-        bytes32 value_,
-        bytes32 ipfsHash_
+        //ring signature parts
+        bytes32 i_,
+        bytes32[] memory c_,
+        bytes32[] memory r_,
+        bytes[] memory publicKeys_,
+        //merkle tree proofs parts
+        bytes32[][] memory merkleTreeProofs_,
+        bytes32[] memory keys_,
+        bytes32[] memory values_,
+        string memory ipfsHash_
     ) external {
         require(
-            _verifySignature(ipfsHash_, signature_) == true,
+            _verifySignature(bytes(ipfsHash_), i_, c_, r_, publicKeys_) == true,
             "FeedbackRegistry: wrong signature"
         );
 
@@ -67,12 +77,17 @@ contract FeedbackRegistry is IFeedbackRegistry {
             course_
         );
 
-        require(
-            courseData_.root.verifyProof(key_, value_, merkleTreeProof_) == true,
-            "FeedbackRegistry: wrong merkle tree verification"
-        );
+        for (uint k = 0; k < merkleTreeProofs_.length; k++) {
+            require(
+                courseData_.root.verifyProof(keys_[k], values_[k], merkleTreeProofs_[k]) == true,
+                "FeedbackRegistry: wrong merkle tree verification"
+            );
+        }
 
         contractFeedbacks[course_].push(ipfsHash_);
+        if (!_isAddedCourse[course_]) {
+            _courses.push(course_);
+        }
     }
 
     /**
@@ -83,20 +98,72 @@ contract FeedbackRegistry is IFeedbackRegistry {
         uint256 offset_,
         uint256 limit_
     ) external view returns (bytes32[] memory) {
-        return contractFeedbacks[course_].part(offset_, limit_);
+        //Deal with type for storing ipfs hash and then finish this getter
+        // return contractFeedbacks[course_].part(offset_, limit_);
     }
 
     /**
-     *  @dev Verifies ECDSA signature.
+     * @inheritdoc IFeedbackRegistry
+     */
+    function getAllFeedbacks()
+        external
+        view
+        returns (bytes[] memory courses_, string[][] memory feedbacks_)
+    {
+        uint256 coursesLength_ = _courses.length;
+
+        courses_ = new bytes[](coursesLength_);
+        feedbacks_ = new string[][](coursesLength_);
+
+        for (uint256 i = 0; i < coursesLength_; i++) {
+            bytes memory course_ = _courses[i];
+            courses_[i] = course_;
+            feedbacks_[i] = contractFeedbacks[course_];
+        }
+    }
+
+    /**
+     *  @dev Verifies Signature.
      *
-     *  @param data_ signature message
-     *  @param signature_ the ecdsa signature itself
-     *  @return true if the signature has corresponding data and signed by sender
+     *  @param message_ signature message
+     *  @param i_ signature key image
+     *  @param c_ signature scalar C
+     *  @param r_ scalars scalar R
+     *  @param publicKeys_ public keys for signature verification
+     *  @return true if the signature is valid
      */
     function _verifySignature(
-        bytes32 data_,
-        bytes memory signature_
-    ) internal view returns (bool) {
-        return data_.toEthSignedMessageHash().recover(signature_) == msg.sender;
+        bytes memory message_,
+        bytes32 i_,
+        bytes32[] memory c_,
+        bytes32[] memory r_,
+        bytes[] memory publicKeys_
+    ) internal pure returns (bool) {
+        return
+            message_.verify(
+                uint256(i_),
+                _bytes32ArrayToUint256Array(c_),
+                _bytes32ArrayToUint256Array(r_),
+                publicKeys_
+            );
+    }
+
+    /**
+     *  @dev Converts bytes32 array to uint256 array.
+     *
+     *  @param data_ bytes32 array to convert into uint256 array
+     *  @return uint256[] with converted values from `data_`
+     */
+    function _bytes32ArrayToUint256Array(
+        bytes32[] memory data_
+    ) internal pure returns (uint256[] memory) {
+        uint256 length_ = data_.length;
+
+        uint256[] memory result = new uint256[](length_);
+        for (uint256 i = 0; i < length_; i++) {
+            result[i] = uint256(data_[i]);
+        }
+
+        return result;
     }
 }
