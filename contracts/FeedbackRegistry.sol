@@ -29,9 +29,9 @@ import "./libs/RingSignature.sol";
  *  Note:
  *  dev team faced with a zkSnark proof generation problems.
  *
- *  The contract will verify only direct user’s ECDSA signature and the Sparse Merkle Tree proof (SMTP)
- *  that the user exists in a participants merkle tree, which root is stored on the CertIntegrator contract.
- *  So there will no any anonymity on the Beta version.
+ *  Contract checks that the addressesMTP root is stored in the CertIntegrator contract and that all
+ *  MTPs are correct. The contract checks the ring signature as well, and if it is correct the
+ *  contract adds feedback to storage.
  */
 contract FeedbackRegistry is IFeedbackRegistry {
     using RingSignature for bytes;
@@ -54,14 +54,14 @@ contract FeedbackRegistry is IFeedbackRegistry {
     /**
      * @inheritdoc IFeedbackRegistry
      */
-    // bytes courseName, bytes ringSignature, address[] participants, bytes[][] addressesMTP
     function addFeedback(
         bytes memory course_,
         //ring signature parts
-        bytes32 i_,
-        bytes32[] memory c_,
-        bytes32[] memory r_,
-        bytes[] memory publicKeys_,
+        uint256 i_,
+        uint256[] memory c_,
+        uint256[] memory r_,
+        uint256[] memory publicKeysX_,
+        uint256[] memory publicKeysY_,
         //merkle tree proofs parts
         bytes32[][] memory merkleTreeProofs_,
         bytes32[] memory keys_,
@@ -69,7 +69,7 @@ contract FeedbackRegistry is IFeedbackRegistry {
         string memory ipfsHash_
     ) external {
         require(
-            _verifySignature(bytes(ipfsHash_), i_, c_, r_, publicKeys_) == true,
+            _verifySignature(bytes(ipfsHash_), i_, c_, r_, publicKeysX_, publicKeysY_) == true,
             "FeedbackRegistry: wrong signature"
         );
 
@@ -87,6 +87,7 @@ contract FeedbackRegistry is IFeedbackRegistry {
         contractFeedbacks[course_].push(ipfsHash_);
         if (!_isAddedCourse[course_]) {
             _courses.push(course_);
+            _isAddedCourse[course_] = true;
         }
     }
 
@@ -97,9 +98,21 @@ contract FeedbackRegistry is IFeedbackRegistry {
         bytes memory course_,
         uint256 offset_,
         uint256 limit_
-    ) external view returns (bytes32[] memory) {
-        //Deal with type for storing ipfs hash and then finish this getter
-        // return contractFeedbacks[course_].part(offset_, limit_);
+    ) external view returns (string[] memory) {
+        uint256 to_ = offset_ + limit_;
+        uint256 length_ = contractFeedbacks[course_].length;
+
+        if (to_ > length_) {
+            to_ = length_;
+        }
+
+        string[] memory list_ = new string[](to_ - offset_);
+
+        for (uint256 i = offset_; i < to_; i++) {
+            list_[i - offset_] = contractFeedbacks[course_][i];
+        }
+
+        return list_;
     }
 
     /**
@@ -129,41 +142,18 @@ contract FeedbackRegistry is IFeedbackRegistry {
      *  @param i_ signature key image
      *  @param c_ signature scalar C
      *  @param r_ scalars scalar R
-     *  @param publicKeys_ public keys for signature verification
+     *  @param publicKeysX_ x coordinates of public keys for signature verification
+     *  @param publicKeysY_ y coordinates of public keys for signature verification
      *  @return true if the signature is valid
      */
     function _verifySignature(
         bytes memory message_,
-        bytes32 i_,
-        bytes32[] memory c_,
-        bytes32[] memory r_,
-        bytes[] memory publicKeys_
+        uint256 i_,
+        uint256[] memory c_,
+        uint256[] memory r_,
+        uint256[] memory publicKeysX_,
+        uint256[] memory publicKeysY_
     ) internal pure returns (bool) {
-        return
-            message_.verify(
-                uint256(i_),
-                _bytes32ArrayToUint256Array(c_),
-                _bytes32ArrayToUint256Array(r_),
-                publicKeys_
-            );
-    }
-
-    /**
-     *  @dev Converts bytes32 array to uint256 array.
-     *
-     *  @param data_ bytes32 array to convert into uint256 array
-     *  @return uint256[] with converted values from `data_`
-     */
-    function _bytes32ArrayToUint256Array(
-        bytes32[] memory data_
-    ) internal pure returns (uint256[] memory) {
-        uint256 length_ = data_.length;
-
-        uint256[] memory result = new uint256[](length_);
-        for (uint256 i = 0; i < length_; i++) {
-            result[i] = uint256(data_[i]);
-        }
-
-        return result;
+        return message_.verify(i_, c_, r_, publicKeysX_, publicKeysY_);
     }
 }

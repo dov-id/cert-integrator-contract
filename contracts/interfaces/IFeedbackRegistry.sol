@@ -12,7 +12,8 @@ interface IFeedbackRegistry {
      *  @param i_ the ring signature image
      *  @param c_ signature scalar C
      *  @param r_  signature scalar R
-     *  @param publicKeys_ public keys that took part in generating signature for its verification
+     *  @param publicKeysX_ x coordinates of public keys that took part in generating signature for its verification
+     *  @param publicKeysY_ y coordinates of public keys that took part in generating signature for its verification
      *  @param merkleTreeProofs_ the proofs generated from merkle tree for specified course and users
      *  whose public keys were used to generate ring signature
      *  @param keys_ keys to verify proofs in sparse merkle tree
@@ -22,10 +23,11 @@ interface IFeedbackRegistry {
     function addFeedback(
         bytes memory course_,
         //ring signature parts
-        bytes32 i_,
-        bytes32[] memory c_,
-        bytes32[] memory r_,
-        bytes[] memory publicKeys_,
+        uint256 i_,
+        uint256[] memory c_,
+        uint256[] memory r_,
+        uint256[] memory publicKeysX_,
+        uint256[] memory publicKeysY_,
         //merkle tree proofs parts
         bytes32[][] memory merkleTreeProofs_,
         bytes32[] memory keys_,
@@ -47,7 +49,7 @@ interface IFeedbackRegistry {
         bytes memory course_,
         uint256 offset_,
         uint256 limit_
-    ) external view returns (bytes32[] memory);
+    ) external view returns (string[] memory);
 
     /**
      *  @dev Function that mostly oriented to publisher-svc.

@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { Contract } from "ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 import { Reverter } from "./helpers/reverter";
 import { getPoseidons } from "./helpers/poseidons";
@@ -13,9 +12,6 @@ describe("FeedbackRegistry", async () => {
   let feedbackRegistry: Contract;
   let certIntegrator: Contract;
 
-  let USER1: SignerWithAddress;
-  let USER2: SignerWithAddress;
-
   let COURSE = "0x736f6d65636f757273656e616d65";
 
   let IPFS: string;
@@ -23,15 +19,14 @@ describe("FeedbackRegistry", async () => {
   let VALUES: string[];
   let PROOFS: string[][];
 
-  let I: string;
-  let C: string[];
-  let R: string[];
-  let PUBLIC_KEYS: string[];
+  let I: BigInt;
+  let C: BigInt[];
+  let R: BigInt[];
+  let PUBLIC_KEYS_X: BigInt[];
+  let PUBLIC_KEYS_Y: BigInt[];
 
   before(async () => {
-    [USER1, USER2] = await ethers.getSigners();
-
-    IPFS = "QmW3p7uFghJ9xVMf95h16jRjGjKX4TDgyGzbXuq4Uw33vj";
+    IPFS = "QmcafQDfq4LGzQ6CimzLVBt7rqEAFSwE4ya8uZt9zUSZJr";
     KEYS = [
       "0x4e04f9e04f79fa38ce851d00a796711ba49d7452000000000000000000000000",
       "0x65419d8f9be1d47adf04c157dcf3e3405e50d8f1000000000000000000000000",
@@ -74,27 +69,35 @@ describe("FeedbackRegistry", async () => {
     ];
 
     C = [
-      "0xca9cfd00f7a3564f02d6c0967f6309317fcc1d01f3fc2c8e9110f69ca5926da6",
-      "0xeb1750210218ed8845aeb7c1a1f4fc61bcae0da3a8e51c0eb99cfb1ab802ddd9",
-      "0x1f3bd911399958240fba4a4a281d1ce71eb7e21c789446ec16f211ee6bace8e0",
-      "0xaaf4c0ef05ba8033933812971b5785cdd194cf4eb27ae5404863ca138867138f",
-      "0xb424c189f21802155947a12b2f487c443abd3f369676036d347640c16d5a5519",
+      BigInt("70041801939983713545541323538650867611888908572372755867640542626006700327007"),
+      BigInt("11383195236235059450968274357691085014684782031145982541396720988477490355059"),
+      BigInt("51457338063847717974933298524926316666611040906549651277498439048797732727515"),
+      BigInt("83520285365944823477249362188943334196252479687517416825605418842699868933856"),
+      BigInt("4440865536153965334656762989295988603297907172732379424317783759012410342008"),
     ];
-    I = "0x8d398dceaecdf2c8417c6367b32c7b10db03c861359206e5c94458c21ad2c94d";
+    I = BigInt("50471588177842483870949591504891431469788067843245220753429247714802432717931");
     R = [
-      "0x57c12b50828272346fb78829beeb62ce5ced11287d38cbf320496e452e99de80",
-      "0xe7352f8723ba749724d805585d8651f94fdd78b8510811a6e6c68c28a0415007",
-      "0x8a644d7ceeb815d3dab622e8ee8d593de1975f69f64c0f44891d8d20560488d9",
-      "0x0916879ee718300e8c89d701374d360fddb95ed43a188e4d976d908ac105dcfc",
-      "0xbb5e00367793aa9ca7b1dc60095c72841d6cb5ef813d43bdd3993d24f22fb9d4",
+      BigInt("34681769164153180207730108951907248945808824653538588288572152602466724238167"),
+      BigInt("38421218312886342217363291339022477464498983787463718180231007937762144399467"),
+      BigInt("55694777476098176687069655949015141665418945773107005677892088091197214072682"),
+      BigInt("77005503372202429945955839956465406013552055414574695047693968274216394517182"),
+      BigInt("2895594570500927798135432795361534101459713373207995170134619553792849695557"),
     ];
 
-    PUBLIC_KEYS = [
-      "0x042fa192fc93d2d20d6f24803465dd3f22e70d7a8a6917c134053c9dca05e7b2f9417575d42103afd5989a425f553706e277b709c2d736f864058b3a1a8c07ef18",
-      "0x0421bf7f73e2e4e19a7b5a6b0e3521c72a4cc2b1a4b8c71484b5038ba5b8dad0d5f2aa3386c6f5cc99a5927f56ed423093600b8851bfa2700571df255be6c011e9",
-      "0x048b74f602ea173a86b4ed7ee69333633fc9c52104721d2ecc85ce90addbef3e4bd4a26be13c569c872b6ffc0f5fbc9a220f64538b298f8c7c070baefa4386362e",
-      "0x04f521fc7ea86b81a8b8eb4a635c7970ad4d9775a18d793c35c472ace32580e63e62643ed2cc87f9ab1ea934099d5c99bbf4719aab21d22cf5d528ce94b36bf4ee",
-      "0x04a62b36cfcfdd7dde217542adcb7f353ac2276802d9d1ff5d346b6ac9616275adad1badd4e1f29b05927fc40db1de2ee4efdffe824e3d5768a475dfe557a4ea29",
+    PUBLIC_KEYS_X = [
+      BigInt("21544180725283665080737435029403945626738292305451098752032497668875188941561"),
+      BigInt("15264671438695105554814157736171101693808132776909943100114660041813940424917"),
+      BigInt("63078138120762156328738222228180148525554661293694095968990272456102849232459"),
+      BigInt("110876696510807313718716669564696607303253365879927370640173820875503868896830"),
+      BigInt("75160285585510138550546692233670343500621109774094027756314740373042193659309"),
+    ];
+
+    PUBLIC_KEYS_Y = [
+      BigInt("29607869487799476451128679839843791240101423214162884824978515269761488121624"),
+      BigInt("109760428980812280723640160076609939028183677671160852284735976210464342282729"),
+      BigInt("96177297683348046674660984212655186653942447147719072583799479170909174380078"),
+      BigInt("44503777459039890091037753626975999547975490216181475985249318303451719660782"),
+      BigInt("78299027417075857530472507339741312673696906924523594633968044219747971426857"),
     ];
 
     certIntegrator = await initCertIntegrator(COURSE, [
@@ -123,9 +126,36 @@ describe("FeedbackRegistry", async () => {
 
   describe("#addFeedback", () => {
     it("should add feedback correctly", async () => {
-      await feedbackRegistry.connect(USER1).addFeedback(COURSE, I, C, R, PUBLIC_KEYS, PROOFS, KEYS, VALUES, IPFS);
+      await feedbackRegistry.addFeedback(COURSE, I, C, R, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, PROOFS, KEYS, VALUES, IPFS);
 
       expect(await feedbackRegistry.contractFeedbacks(COURSE, 0)).to.equal(IPFS);
+    });
+
+    it("should add feedbacks correctly", async () => {
+      await feedbackRegistry.addFeedback(COURSE, I, C, R, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, PROOFS, KEYS, VALUES, IPFS);
+
+      let c = [
+        BigInt("95593772452988548797584702700614976759598547735480560019061601720733036070655"),
+        BigInt("72367725849970107279473806495086388380329608816784746903363186523164005219237"),
+        BigInt("101005801860091418701873602222447382842542125315080612801049682202091736794323"),
+        BigInt("50464443347419473763501884772307991275858433897976851422965049907762115022564"),
+        BigInt("53873725491103934607321454841672555093079369636606788673998319068216049119486"),
+      ];
+      let i = BigInt("50471588177842483870949591504891431469788067843245220753429247714802432717931");
+      let r = [
+        BigInt("18760959131497910176590618885895348014835071232767487618151415944951863715709"),
+        BigInt("93641633942938017875149022665748231861393508101289408417552048576145600174241"),
+        BigInt("20664874913975052532425223260394811948401613784525294983364407210210210773032"),
+        BigInt("14061590544799875826928616881348970427958631545351897379047521186613752200628"),
+        BigInt("51727424129169314651399640234993932014344871560681574025566420767994377729160"),
+      ];
+
+      let ipfs = "QmPz6TMRCtb5XBumveF1WxAc4NWHDMancxcA5uNa4ksDzH";
+
+      await feedbackRegistry.addFeedback(COURSE, i, c, r, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, PROOFS, KEYS, VALUES, ipfs);
+
+      expect(await feedbackRegistry.contractFeedbacks(COURSE, 0)).to.equal(IPFS);
+      expect(await feedbackRegistry.contractFeedbacks(COURSE, 1)).to.equal(ipfs);
     });
 
     it("should revert merkle tree verification", async () => {
@@ -137,38 +167,50 @@ describe("FeedbackRegistry", async () => {
       ];
 
       await expect(
-        feedbackRegistry.connect(USER1).addFeedback(COURSE, I, C, R, PUBLIC_KEYS, proof, KEYS, VALUES, IPFS)
+        feedbackRegistry.addFeedback(COURSE, I, C, R, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, proof, KEYS, VALUES, IPFS)
       ).to.be.revertedWith("FeedbackRegistry: wrong merkle tree verification");
     });
 
     it("should revert empty merkle tree verification", async () => {
       await expect(
-        feedbackRegistry.connect(USER1).addFeedback(COURSE, I, C, R, PUBLIC_KEYS, [[]], KEYS, VALUES, IPFS)
+        feedbackRegistry.addFeedback(COURSE, I, C, R, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, [[]], KEYS, VALUES, IPFS)
       ).to.be.revertedWith("SMTVerifier: sparse merkle tree proof is empty");
     });
 
     it("should revert wrong signature", async () => {
       let c = [
-        "0x8ed015fd11e1a9a39e9846fc928d6dae0d1a5db77119dd3d799b7dc93e2b9201",
-        "0x9de462503f24ae5878e58128bf90c98f6b274498873f084370c2cc323be9975b",
-        "0x3932fbbbed7f4b6ba55f7de70e604f3aed5cb7a91312afb5ce26c2f2b5a23424",
-        "0xff9fbb4d6360f9f95ec08aeda0ff1b8b6decc0202161ebeb9827fc798e52af06",
-        "0x9c4504d65aaea495da384e9cab5988b742154acb9538cb9b8ff7fd8db3053793",
+        BigInt("70041801939983713545541323538650867611888908572372755867640542626006700327005"),
+        BigInt("11383195236235059450968274357691085014684782031145982541396720988477490355059"),
+        BigInt("51457338063847717974933298524926316666611040906549651277498439048797732727515"),
+        BigInt("83520285365944823477249362188943334196252479687517416825605418842699868933856"),
+        BigInt("4440865536153965334656762989295988603297907172732379424317783759012410342008"),
       ];
 
       await expect(
-        feedbackRegistry.connect(USER2).addFeedback(COURSE, I, c, R, PUBLIC_KEYS, PROOFS, KEYS, VALUES, IPFS)
+        feedbackRegistry.addFeedback(COURSE, I, c, R, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, PROOFS, KEYS, VALUES, IPFS)
       ).to.be.revertedWith("FeedbackRegistry: wrong signature");
     });
   });
 
-  // describe("#getFeedbacks", () => {
-  //   it("should return feedback for course", async () => {
-  //     const signature = await USER1.signMessage(ethers.utils.arrayify(IPFS));
+  describe("#getFeedbacks", () => {
+    it("should return feedback for course", async () => {
+      await feedbackRegistry.addFeedback(COURSE, I, C, R, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, PROOFS, KEYS, VALUES, IPFS);
 
-  //     await feedbackRegistry.connect(USER1).addFeedback(COURSE, signature, PROOF, KEY, VAL, IPFS);
+      expect(await feedbackRegistry.getFeedbacks(COURSE, 0, 3)).to.deep.equal([IPFS]);
+    });
 
-  //     expect(await feedbackRegistry.getFeedbacks(COURSE, 0, 3)).to.deep.equal([IPFS]);
-  //   });
-  // });
+    it("should return feedback for course", async () => {
+      await feedbackRegistry.addFeedback(COURSE, I, C, R, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, PROOFS, KEYS, VALUES, IPFS);
+
+      expect(await feedbackRegistry.getFeedbacks(COURSE, 0, 1)).to.deep.equal([IPFS]);
+    });
+  });
+
+  describe("#getAllFeedbacks", () => {
+    it("should return all feedbacks with courses", async () => {
+      await feedbackRegistry.addFeedback(COURSE, I, C, R, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, PROOFS, KEYS, VALUES, IPFS);
+
+      expect(await feedbackRegistry.getAllFeedbacks()).to.deep.equal([[COURSE], [[IPFS]]]);
+    });
+  });
 });
