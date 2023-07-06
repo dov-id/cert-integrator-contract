@@ -15,39 +15,39 @@ interface ICertIntegrator {
      * @dev Updates the contract information abouts course states.
      *
      * This function takes two equal size arrays that contains courses
-     * names and merkle tree roots (to identify whether the user in course).
+     * addresses and merkle tree roots (to identify whether the user in course).
      * Each root in the list corresponds to the course with such name.
      *
-     * @param courses_ array with course names
+     * @param courses_ array with course address
      * @param states_ array with course states
      *
      * Requirements:
      *
      * - the `courses_` and `states_` arrays length must be equal.
      */
-    function updateCourseState(bytes[] memory courses_, bytes32[] memory states_) external;
+    function updateCourseState(address[] memory courses_, bytes32[] memory states_) external;
 
     /**
-     * @dev Retrieves info by course name.
+     * @dev Retrieves info by course address.
      *
-     * @param course_ course name to retrieve info
+     * @param course_ course address to retrieve info
      * @return Data[] with all states for course
      */
-    function getData(bytes memory course_) external view returns (Data[] memory);
+    function getData(address course_) external view returns (Data[] memory);
 
     /**
-     * @dev Retrieves last info by course name.
+     * @dev Retrieves last info by course address.
      *
-     * @param course_ course name to retrieve info
+     * @param course_ course address to retrieve info
      * @return Data with last state for course
      */
-    function getLastData(bytes memory course_) external view returns (Data memory);
+    function getLastData(address course_) external view returns (Data memory);
 
     /**
-     * @dev Retrieves info length by course name.
+     * @dev Retrieves info length by course address.
      *
-     * @param course_ course name to retrieve info length
+     * @param course_ course address to retrieve info length
      * @return uint256 amount of Data[] elements
      */
-    function getDataLength(bytes memory course_) external view returns (uint256);
+    function getDataLength(address course_) external view returns (uint256);
 }

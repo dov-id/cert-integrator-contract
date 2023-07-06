@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@dlsl/dev-modules/libs/arrays/Paginator.sol";
 
 import "./interfaces/IFeedbackRegistry.sol";
@@ -11,12 +12,14 @@ import "./libs/RingSignature.sol";
 /**
  *  @notice The Feedback registry contract
  *
- *  The FeedbackRegistry contract is the main contract in the Dov-Id system. It will provide the logic
+ *  1. The FeedbackRegistry contract is the main contract in the Dov-Id system. It will provide the logic
  *  for adding and storing the course participants’ feedbacks, where the feedback is an IPFS hash that
  *  routes us to the user’s feedback payload on IPFS. Also, it is responsible for validating the ZKP
  *  of NFT owning.
  *
- *  Requirements:
+ *  2. The course identifier - is its adddress as every course is represented by NFT contract.
+ *
+ *  3. Requirements:
  *
  *  - The contract must receive information about the courses and their participants from the
  *    CertIntegrator contract.
@@ -26,25 +29,22 @@ import "./libs/RingSignature.sol";
  *
  *  - The ability to retrieve feedbacks with a pagination.
  *
- *  Note:
- *  dev team faced with a zkSnark proof generation problems.
- *
- *  Contract checks that the addressesMTP root is stored in the CertIntegrator contract and that all
+ *  4. Note:
+ *     Dev team faced with a zkSnark proof generation problems, so now
+ *  contract checks that the addressesMTP root is stored in the CertIntegrator contract and that all
  *  MTPs are correct. The contract checks the ring signature as well, and if it is correct the
  *  contract adds feedback to storage.
  */
 contract FeedbackRegistry is IFeedbackRegistry {
+    using EnumerableSet for EnumerableSet.AddressSet;
     using RingSignature for bytes;
     using SMTVerifier for bytes32;
-    using Paginator for string[];
+    using Paginator for EnumerableSet.AddressSet;
 
-    // course name => feedbacks (ipfs)
-    mapping(bytes => string[]) public contractFeedbacks; //temporary feedback is string, while getting in what format to store ipfs hash
+    // course address => feedbacks (ipfs)
+    mapping(address => string[]) public contractFeedbacks;
 
-    // courses name => existence (to prevent iterating through all `_courses` array in order to avoid duplicates)
-    mapping(bytes => bool) internal _isAddedCourse;
-    // courses to have ability to retrieve all feebacks in back end service
-    bytes[] internal _courses;
+    EnumerableSet.AddressSet private _courses;
     address internal _certIntegrator;
 
     constructor(address certIntegrator_) {
@@ -55,14 +55,12 @@ contract FeedbackRegistry is IFeedbackRegistry {
      * @inheritdoc IFeedbackRegistry
      */
     function addFeedback(
-        bytes memory course_,
-        //ring signature parts
+        address course_,
         uint256 i_,
         uint256[] memory c_,
         uint256[] memory r_,
         uint256[] memory publicKeysX_,
         uint256[] memory publicKeysY_,
-        //merkle tree proofs parts
         bytes32[][] memory merkleTreeProofs_,
         bytes32[] memory keys_,
         bytes32[] memory values_,
@@ -85,17 +83,14 @@ contract FeedbackRegistry is IFeedbackRegistry {
         }
 
         contractFeedbacks[course_].push(ipfsHash_);
-        if (!_isAddedCourse[course_]) {
-            _courses.push(course_);
-            _isAddedCourse[course_] = true;
-        }
+        _courses.add(course_);
     }
 
     /**
      * @inheritdoc IFeedbackRegistry
      */
     function getFeedbacks(
-        bytes memory course_,
+        address course_,
         uint256 offset_,
         uint256 limit_
     ) external view returns (string[] memory) {
@@ -118,25 +113,23 @@ contract FeedbackRegistry is IFeedbackRegistry {
     /**
      * @inheritdoc IFeedbackRegistry
      */
-    function getAllFeedbacks()
-        external
-        view
-        returns (bytes[] memory courses_, string[][] memory feedbacks_)
-    {
-        uint256 coursesLength_ = _courses.length;
+    function getAllFeedbacks(
+        uint256 offset_,
+        uint256 limit_
+    ) external view returns (address[] memory courses_, string[][] memory feedbacks_) {
+        courses_ = _courses.part(offset_, limit_);
 
-        courses_ = new bytes[](coursesLength_);
+        uint256 coursesLength_ = courses_.length;
+
         feedbacks_ = new string[][](coursesLength_);
 
         for (uint256 i = 0; i < coursesLength_; i++) {
-            bytes memory course_ = _courses[i];
-            courses_[i] = course_;
-            feedbacks_[i] = contractFeedbacks[course_];
+            feedbacks_[i] = contractFeedbacks[courses_[i]];
         }
     }
 
     /**
-     *  @dev Verifies Signature.
+     *  @dev Verifies Ring Signature.
      *
      *  @param message_ signature message
      *  @param i_ signature key image

@@ -16,6 +16,11 @@ interface IVerifier {
      *
      *  @notice This function takes some params, then verifies signature, merkle
      *  tree proof and then mint new token.
+     *  Should be noticed:
+     *      - `i_`, `c_`, `r_`, `publickKeysX_` and `publickKeysY_` are parts of Ring
+     *  signature;
+     *      - `merkleTreeProofs_`, `keys_` and `values_` are parts of merkle tree proofs
+     *  to verify that all users that took part in ring signature are course participants.
      *
      *  @param contract_ the contract address to retrieve last root for and to mint new token from
      *  @param i_ the ring signature image

@@ -20,7 +20,9 @@ import "./interfaces/ICertIntegrator.sol";
  *  update the data. This way, every instance of FeedbackRegistry on different chains will have
  *  the latest and most up-to-date data available.
  *
- *  4. Requirements:
+ *  4. The course identifier - is its adddress as every course is represented by NFT contract.
+ *
+ *  5. Requirements:
  *
  *      - The ability to update the state for a specific course. It is only for a contract owner.
  *
@@ -31,14 +33,14 @@ import "./interfaces/ICertIntegrator.sol";
  *        this state valid.
  */
 contract CertIntegrator is Ownable, ICertIntegrator {
-    // course name => data (root+block)
-    mapping(bytes => Data[]) public contractData;
+    // course address => data (root+block)
+    mapping(address => Data[]) public contractData;
 
     /**
      * @inheritdoc ICertIntegrator
      */
     function updateCourseState(
-        bytes[] memory courses_,
+        address[] memory courses_,
         bytes32[] memory states_
     ) external onlyOwner {
         uint256 coursesLength_ = courses_.length;
@@ -57,14 +59,14 @@ contract CertIntegrator is Ownable, ICertIntegrator {
     /**
      * @inheritdoc ICertIntegrator
      */
-    function getData(bytes memory course_) external view returns (Data[] memory) {
+    function getData(address course_) external view returns (Data[] memory) {
         return contractData[course_];
     }
 
     /**
      * @inheritdoc ICertIntegrator
      */
-    function getLastData(bytes memory course_) external view returns (Data memory) {
+    function getLastData(address course_) external view returns (Data memory) {
         uint256 length_ = contractData[course_].length;
 
         require(length_ > 0, "CertIntegrator: course info is empty");
@@ -75,7 +77,7 @@ contract CertIntegrator is Ownable, ICertIntegrator {
     /**
      * @inheritdoc ICertIntegrator
      */
-    function getDataLength(bytes memory course_) external view returns (uint256) {
+    function getDataLength(address course_) external view returns (uint256) {
         return contractData[course_].length;
     }
 }

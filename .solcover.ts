@@ -1,4 +1,4 @@
 export = {
-  skipFiles: ["/interfaces", "/mock"],
+  skipFiles: ["/interfaces", "/mock", "/elliptic-curve-solidity"],
   configureYulOptimizer: true,
 };

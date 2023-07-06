@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
-// pragma solidity >=0.5.3 <0.9.0;
 pragma solidity ^0.8.0;
 
-import "elliptic-curve-solidity/contracts/EllipticCurve.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+
+import "../elliptic-curve-solidity/contracts/EllipticCurve.sol";
 
 /**
  *  1. This library is needed for operating with ring signature in Secp256k1 elliptic curve.
@@ -25,9 +25,9 @@ import "@openzeppelin/contracts/utils/Strings.sol";
  *   End Procedure
  *
  *  3. Gas usage for `verify` method is:
- *      a. Min: ???
- *      b. Avg: ???
- *      c. Max: ???
+ *      a. Min: 7040807
+ *      b. Avg: 7106215
+ *      c. Max: 7151070
  */
 library RingSignature {
     struct Coordinate {

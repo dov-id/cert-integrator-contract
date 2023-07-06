@@ -42,13 +42,11 @@ contract Verifier is IVerifier {
      */
     function verifyContract(
         address contract_,
-        //ring signature parts
         uint256 i_,
         uint256[] memory c_,
         uint256[] memory r_,
         uint256[] memory publicKeysX_,
         uint256[] memory publicKeysY_,
-        //merkle tree proofs parts
         bytes32[][] memory merkleTreeProofs_,
         bytes32[] memory keys_,
         bytes32[] memory values_,
@@ -60,7 +58,7 @@ contract Verifier is IVerifier {
         );
 
         (bool success_, bytes memory data_) = _integrator.call(
-            abi.encodeWithSignature("getLastData(bytes)", abi.encodePacked(contract_))
+            abi.encodeWithSignature("getLastData(address)", contract_)
         );
 
         require(success_, "Verifier: failed to get last data");

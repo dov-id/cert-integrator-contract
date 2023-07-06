@@ -12,7 +12,7 @@ describe("FeedbackRegistry", async () => {
   let feedbackRegistry: Contract;
   let certIntegrator: Contract;
 
-  let COURSE = "0x736f6d65636f757273656e616d65";
+  let COURSE = "0x63223538169D7228b37C9182eD6d2b9B2CfD8F26";
 
   let IPFS: string;
   let KEYS: string[];
@@ -210,7 +210,7 @@ describe("FeedbackRegistry", async () => {
     it("should return all feedbacks with courses", async () => {
       await feedbackRegistry.addFeedback(COURSE, I, C, R, PUBLIC_KEYS_X, PUBLIC_KEYS_Y, PROOFS, KEYS, VALUES, IPFS);
 
-      expect(await feedbackRegistry.getAllFeedbacks()).to.deep.equal([[COURSE], [[IPFS]]]);
+      expect(await feedbackRegistry.getAllFeedbacks(0, 3)).to.deep.equal([[COURSE], [[IPFS]]]);
     });
   });
 });

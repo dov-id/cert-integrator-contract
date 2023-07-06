@@ -6,9 +6,14 @@ interface IFeedbackRegistry {
      *  @dev Adds the feedback to the course.
      *
      *  @notice This function takes some params, then verifies signature, merkle
-     *  tree proofs and only if nothing wrong stores feedback in storage
+     *  tree proofs and only if nothing wrong stores feedback in storage.
+     *  Should be noticed:
+     *      - `i_`, `c_`, `r_`, `publickKeysX_` and `publickKeysY_` are parts of Ring
+     *  signature;
+     *      - `merkleTreeProofs_`, `keys_` and `values_` are parts of merkle tree proofs
+     *  to verify that all users that took part in ring signature are course participants.
      *
-     *  @param course_ the course name
+     *  @param course_ the course address
      *  @param i_ the ring signature image
      *  @param c_ signature scalar C
      *  @param r_  signature scalar R
@@ -21,7 +26,7 @@ interface IFeedbackRegistry {
      *  @param ipfsHash_ the hash from ipfs that stores feedback content
      */
     function addFeedback(
-        bytes memory course_,
+        address course_,
         //ring signature parts
         uint256 i_,
         uint256[] memory c_,
@@ -41,12 +46,12 @@ interface IFeedbackRegistry {
      *  @notice This function takes some params and returns paginated
      *  feedbacks ipfs hashes for specified course name.
      *
-     *  @param course_ the course name
+     *  @param course_ the course addrss
      *  @param offset_ the amount of feedbacks to offset
      *  @param limit_ the maximum feedbacks amount to return
      */
     function getFeedbacks(
-        bytes memory course_,
+        address course_,
         uint256 offset_,
         uint256 limit_
     ) external view returns (string[] memory);
@@ -57,12 +62,14 @@ interface IFeedbackRegistry {
      *  @notice This function returns ALL feedbacks that are stored in storage
      *  for ALL courses.
      *
+     *  @param offset_ the amount of courses to offset
+     *  @param limit_ the maximum courses amount to return theid feedbacks
      *  @return courses_ feedbacks_  where `courses_` is array with course identifiers and
      *  `feebacks_` is 2d array with feebacks (their ipfs hashes) for corresponding course
      *  from `courses_
      */
-    function getAllFeedbacks()
-        external
-        view
-        returns (bytes[] memory courses_, string[][] memory feedbacks_);
+    function getAllFeedbacks(
+        uint256 offset_,
+        uint256 limit_
+    ) external view returns (address[] memory courses_, string[][] memory feedbacks_);
 }
