@@ -3,17 +3,16 @@
 pragma solidity ^0.8.0;
 
 /**
- ** @title Elliptic Curve Library
- ** @dev Library providing arithmetic operations over elliptic curves.
- ** This library does not check whether the inserted points belong to the curve
- ** `isOnCurve` function should be used by the library user to check the aforementioned statement.
- ** @author Witnet Foundation
- **
- **
- ** @notice !!! This library was included derectly in code because the npm version has incompatible
- ** solidity versions and due to it may be considered as outdated, so to have the mos up to date
- ** version, I decided to insert requires files here.
- ** The code was taken from Witnet Foundation and their [Elliptic Curve Solidity Library](https://github.com/witnet/elliptic-curve-solidity)
+ * @title Elliptic Curve Library
+ *
+ * @notice Since the npm version of the Elliptic Curve Library at [npm](Elliptic Curve Library) is outdated, all necessary files were included in the project from GitHub.
+ * The code was taken from Witnet Foundation and their [Elliptic Curve Solidity Library](https://github.com/witnet/elliptic-curve-solidity)
+ *
+ * @dev Library providing arithmetic operations over elliptic curves.
+ * This library does not check whether the inserted points belong to the curve
+ * `isOnCurve` function should be used by the library user to check the aforementioned statement.
+ *
+ * @author Witnet Foundation
  */
 library EllipticCurve {
     // Pre-computed constant for 2 ** 255

@@ -44,8 +44,9 @@ contract FeedbackRegistry is IFeedbackRegistry {
     // course address => feedbacks (ipfs)
     mapping(address => string[]) public contractFeedbacks;
 
+    address private _certIntegrator;
+
     EnumerableSet.AddressSet private _courses;
-    address internal _certIntegrator;
 
     constructor(address certIntegrator_) {
         _certIntegrator = certIntegrator_;
@@ -94,12 +95,7 @@ contract FeedbackRegistry is IFeedbackRegistry {
         uint256 offset_,
         uint256 limit_
     ) external view returns (string[] memory) {
-        uint256 to_ = offset_ + limit_;
-        uint256 length_ = contractFeedbacks[course_].length;
-
-        if (to_ > length_) {
-            to_ = length_;
-        }
+        uint256 to_ = Paginator.getTo(contractFeedbacks[course_].length, offset_, limit_);
 
         string[] memory list_ = new string[](to_ - offset_);
 
