@@ -26,8 +26,8 @@ import "../elliptic-curve-solidity/contracts/EllipticCurve.sol";
  *
  *  3. Gas usage for `verify` method is:
  *      a. Min: 7040807
- *      b. Avg: 7106215
- *      c. Max: 7151070
+ *      b. Avg: 12077960
+ *      c. Max: 23877055
  */
 library RingSignature {
     struct Coordinate {
