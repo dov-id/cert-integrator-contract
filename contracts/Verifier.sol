@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-
 import "./interfaces/IVerifier.sol";
 import "./libs/SMTVerifier.sol";
+import "./libs/RingSignature.sol";
 
 /**
  *  @notice The Verifier contract
@@ -24,13 +23,12 @@ import "./libs/SMTVerifier.sol";
  *         the contract address to mint new token in side-chain.
  *
  *  4. Note:
- *      a. As signature now we process ECDSA signature from function caller
- *      b. In ECDSA signature temporary must be signed `key_` parameter
- *      c. As merkle tree proof contract waits Sparse Merkle Tree Proof. During testing was used
+ *      a. As signature now we process ring signature
+ *      b. As merkle tree proof contract waits Sparse Merkle Tree Proof. During testing was used
  *         proofs from such [realization](https://github.com/iden3/go-merkletree-sql)
  */
 contract Verifier is IVerifier {
-    using ECDSA for bytes32;
+    using RingSignature for bytes;
     using SMTVerifier for bytes32;
 
     address internal _integrator;
@@ -44,26 +42,35 @@ contract Verifier is IVerifier {
      */
     function verifyContract(
         address contract_,
-        bytes memory signature_,
-        bytes32[] memory merkleTreeProof_,
-        bytes32 key_,
-        bytes32 value_,
+        uint256 i_,
+        uint256[] memory c_,
+        uint256[] memory r_,
+        uint256[] memory publicKeysX_,
+        uint256[] memory publicKeysY_,
+        bytes32[][] memory merkleTreeProofs_,
+        bytes32[] memory keys_,
+        bytes32[] memory values_,
         string memory tokenUri_
     ) external returns (uint256) {
-        require(_verifySignature(key_, signature_) == true, "Verifier: wrong signature");
+        require(
+            _verifySignature(bytes(tokenUri_), i_, c_, r_, publicKeysX_, publicKeysY_) == true,
+            "Verifier: wrong signature"
+        );
 
         (bool success_, bytes memory data_) = _integrator.call(
-            abi.encodeWithSignature("getLastData(bytes)", abi.encodePacked(contract_))
+            abi.encodeWithSignature("getLastData(address)", contract_)
         );
 
         require(success_, "Verifier: failed to get last data");
 
         Data memory courseData_ = abi.decode(data_, (Data));
 
-        require(
-            courseData_.root.verifyProof(key_, value_, merkleTreeProof_) == true,
-            "Verifier: wrong merkle tree verification"
-        );
+        for (uint k = 0; k < merkleTreeProofs_.length; k++) {
+            require(
+                courseData_.root.verifyProof(keys_[k], values_[k], merkleTreeProofs_[k]) == true,
+                "Verifier: wrong merkle tree verification"
+            );
+        }
 
         (success_, data_) = contract_.call(
             abi.encodeWithSignature("mintToken(address,string)", msg.sender, tokenUri_)
@@ -75,16 +82,24 @@ contract Verifier is IVerifier {
     }
 
     /**
-     *  @dev Verifies ECDSA signature.
+     *  @dev Verifies Ring Signature.
      *
-     *  @param data_ signature message
-     *  @param signature_ the ecdsa signature itself
-     *  @return true if the signature has corresponding data and signed by sender
+     *  @param message_ signature message
+     *  @param i_ signature key image
+     *  @param c_ signature scalar C
+     *  @param r_ scalars scalar R
+     *  @param publicKeysX_ x coordinates of public keys for signature verification
+     *  @param publicKeysY_ y coordinates of public keys for signature verification
+     *  @return true if the signature is valid
      */
     function _verifySignature(
-        bytes32 data_,
-        bytes memory signature_
-    ) internal view returns (bool) {
-        return data_.toEthSignedMessageHash().recover(signature_) == msg.sender;
+        bytes memory message_,
+        uint256 i_,
+        uint256[] memory c_,
+        uint256[] memory r_,
+        uint256[] memory publicKeysX_,
+        uint256[] memory publicKeysY_
+    ) internal pure returns (bool) {
+        return message_.verify(i_, c_, r_, publicKeysX_, publicKeysY_);
     }
 }

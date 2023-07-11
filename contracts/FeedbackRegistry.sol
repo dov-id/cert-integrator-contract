@@ -1,22 +1,25 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@dlsl/dev-modules/libs/arrays/Paginator.sol";
 
 import "./interfaces/IFeedbackRegistry.sol";
 import "./interfaces/ICertIntegrator.sol";
 import "./libs/SMTVerifier.sol";
+import "./libs/RingSignature.sol";
 
 /**
  *  @notice The Feedback registry contract
  *
- *  The FeedbackRegistry contract is the main contract in the Dov-Id system. It will provide the logic
+ *  1. The FeedbackRegistry contract is the main contract in the Dov-Id system. It will provide the logic
  *  for adding and storing the course participants’ feedbacks, where the feedback is an IPFS hash that
  *  routes us to the user’s feedback payload on IPFS. Also, it is responsible for validating the ZKP
  *  of NFT owning.
  *
- *  Requirements:
+ *  2. The course identifier - is its adddress as every course is represented by NFT contract.
+ *
+ *  3. Requirements:
  *
  *  - The contract must receive information about the courses and their participants from the
  *    CertIntegrator contract.
@@ -26,22 +29,24 @@ import "./libs/SMTVerifier.sol";
  *
  *  - The ability to retrieve feedbacks with a pagination.
  *
- *  Note:
- *  dev team faced with a zkSnark proof generation problems.
- *
- *  The contract will verify only direct user’s ECDSA signature and the Sparse Merkle Tree proof (SMTP)
- *  that the user exists in a participants merkle tree, which root is stored on the CertIntegrator contract.
- *  So there will no any anonymity on the Beta version.
+ *  4. Note:
+ *     Dev team faced with a zkSnark proof generation problems, so now
+ *  contract checks that the addressesMTP root is stored in the CertIntegrator contract and that all
+ *  MTPs are correct. The contract checks the ring signature as well, and if it is correct the
+ *  contract adds feedback to storage.
  */
 contract FeedbackRegistry is IFeedbackRegistry {
-    using ECDSA for bytes32;
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using RingSignature for bytes;
     using SMTVerifier for bytes32;
-    using Paginator for bytes32[];
+    using Paginator for EnumerableSet.AddressSet;
 
-    // course name => feedbacks (ipfs)
-    mapping(bytes => bytes32[]) public contractFeedbacks;
+    // course address => feedbacks (ipfs)
+    mapping(address => string[]) public contractFeedbacks;
 
-    address internal _certIntegrator;
+    address private _certIntegrator;
+
+    EnumerableSet.AddressSet private _courses;
 
     constructor(address certIntegrator_) {
         _certIntegrator = certIntegrator_;
@@ -51,15 +56,19 @@ contract FeedbackRegistry is IFeedbackRegistry {
      * @inheritdoc IFeedbackRegistry
      */
     function addFeedback(
-        bytes memory course_,
-        bytes memory signature_,
-        bytes32[] memory merkleTreeProof_,
-        bytes32 key_,
-        bytes32 value_,
-        bytes32 ipfsHash_
+        address course_,
+        uint256 i_,
+        uint256[] memory c_,
+        uint256[] memory r_,
+        uint256[] memory publicKeysX_,
+        uint256[] memory publicKeysY_,
+        bytes32[][] memory merkleTreeProofs_,
+        bytes32[] memory keys_,
+        bytes32[] memory values_,
+        string memory ipfsHash_
     ) external {
         require(
-            _verifySignature(ipfsHash_, signature_) == true,
+            _verifySignature(bytes(ipfsHash_), i_, c_, r_, publicKeysX_, publicKeysY_) == true,
             "FeedbackRegistry: wrong signature"
         );
 
@@ -67,36 +76,73 @@ contract FeedbackRegistry is IFeedbackRegistry {
             course_
         );
 
-        require(
-            courseData_.root.verifyProof(key_, value_, merkleTreeProof_) == true,
-            "FeedbackRegistry: wrong merkle tree verification"
-        );
+        for (uint k = 0; k < merkleTreeProofs_.length; k++) {
+            require(
+                courseData_.root.verifyProof(keys_[k], values_[k], merkleTreeProofs_[k]) == true,
+                "FeedbackRegistry: wrong merkle tree verification"
+            );
+        }
 
         contractFeedbacks[course_].push(ipfsHash_);
+        _courses.add(course_);
     }
 
     /**
      * @inheritdoc IFeedbackRegistry
      */
     function getFeedbacks(
-        bytes memory course_,
+        address course_,
         uint256 offset_,
         uint256 limit_
-    ) external view returns (bytes32[] memory) {
-        return contractFeedbacks[course_].part(offset_, limit_);
+    ) external view returns (string[] memory) {
+        uint256 to_ = Paginator.getTo(contractFeedbacks[course_].length, offset_, limit_);
+
+        string[] memory list_ = new string[](to_ - offset_);
+
+        for (uint256 i = offset_; i < to_; i++) {
+            list_[i - offset_] = contractFeedbacks[course_][i];
+        }
+
+        return list_;
     }
 
     /**
-     *  @dev Verifies ECDSA signature.
+     * @inheritdoc IFeedbackRegistry
+     */
+    function getAllFeedbacks(
+        uint256 offset_,
+        uint256 limit_
+    ) external view returns (address[] memory courses_, string[][] memory feedbacks_) {
+        courses_ = _courses.part(offset_, limit_);
+
+        uint256 coursesLength_ = courses_.length;
+
+        feedbacks_ = new string[][](coursesLength_);
+
+        for (uint256 i = 0; i < coursesLength_; i++) {
+            feedbacks_[i] = contractFeedbacks[courses_[i]];
+        }
+    }
+
+    /**
+     *  @dev Verifies Ring Signature.
      *
-     *  @param data_ signature message
-     *  @param signature_ the ecdsa signature itself
-     *  @return true if the signature has corresponding data and signed by sender
+     *  @param message_ signature message
+     *  @param i_ signature key image
+     *  @param c_ signature scalar C
+     *  @param r_ scalars scalar R
+     *  @param publicKeysX_ x coordinates of public keys for signature verification
+     *  @param publicKeysY_ y coordinates of public keys for signature verification
+     *  @return true if the signature is valid
      */
     function _verifySignature(
-        bytes32 data_,
-        bytes memory signature_
-    ) internal view returns (bool) {
-        return data_.toEthSignedMessageHash().recover(signature_) == msg.sender;
+        bytes memory message_,
+        uint256 i_,
+        uint256[] memory c_,
+        uint256[] memory r_,
+        uint256[] memory publicKeysX_,
+        uint256[] memory publicKeysY_
+    ) internal pure returns (bool) {
+        return message_.verify(i_, c_, r_, publicKeysX_, publicKeysY_);
     }
 }
